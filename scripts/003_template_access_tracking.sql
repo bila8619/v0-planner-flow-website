@@ -1,0 +1,3 @@
+-- Removed all template_access_log table creation, policies, functions, and triggers
+-- This file is now empty as template access logging has been completely removed
+-- Template access control is now handled entirely client-side based on subscription plans

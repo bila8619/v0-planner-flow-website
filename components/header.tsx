@@ -36,11 +36,11 @@ export function Header() {
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center space-x-2">
               <Image
-                src="/logo-black.png"
+                src="/plannerflow-logo.png"
                 alt="PlannerFlow - Create. Focus. Repeat."
-                width={180}
-                height={60}
-                className="h-10 w-auto"
+                width={200}
+                height={50}
+                className="h-12 w-auto"
                 priority
               />
             </Link>

@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ❌ remove `output: 'export'`
+  output: 'standalone',
   trailingSlash: true,
   eslint: {
     ignoreDuringBuilds: true,

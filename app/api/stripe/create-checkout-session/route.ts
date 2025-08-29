@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     console.log("[v0] Site URL:", siteUrl)
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      payment_method_types: ["card", "apple_pay", "affirm"],
       line_items: [
         {
           price: priceId,
@@ -105,6 +105,11 @@ export async function POST(request: NextRequest) {
       success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/pricing`,
       customer: customerId,
+      payment_method_options: {
+        affirm: {
+          capture_method: "automatic",
+        },
+      },
       metadata: {
         supabase_user_id: user.id,
         price_id: priceId,

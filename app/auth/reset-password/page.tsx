@@ -45,33 +45,47 @@ export default function ResetPasswordPage() {
           return
         }
 
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const accessToken = hashParams.get("access_token")
-        const refreshToken = hashParams.get("refresh_token")
-        const type = hashParams.get("type")
+        const code = searchParams.get("code")
 
-        if (accessToken && refreshToken && type === "recovery") {
-          const { data, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
+        if (code) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
-          if (sessionError) {
-            console.error("Session error:", sessionError)
+          if (exchangeError) {
+            console.error("Code exchange error:", exchangeError)
             setError("Invalid or expired reset link. Please request a new one.")
           } else if (data.session) {
             setIsValidSession(true)
             window.history.replaceState({}, document.title, window.location.pathname)
           }
         } else {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession()
+          const hashParams = new URLSearchParams(window.location.hash.substring(1))
+          const accessToken = hashParams.get("access_token")
+          const refreshToken = hashParams.get("refresh_token")
+          const type = hashParams.get("type")
 
-          if (session) {
-            setIsValidSession(true)
+          if (accessToken && refreshToken && type === "recovery") {
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+
+            if (sessionError) {
+              console.error("Session error:", sessionError)
+              setError("Invalid or expired reset link. Please request a new one.")
+            } else if (data.session) {
+              setIsValidSession(true)
+              window.history.replaceState({}, document.title, window.location.pathname)
+            }
           } else {
-            setError("Invalid or expired reset link. Please request a new one.")
+            const {
+              data: { session },
+            } = await supabase.auth.getSession()
+
+            if (session) {
+              setIsValidSession(true)
+            } else {
+              setError("Invalid or expired reset link. Please request a new one.")
+            }
           }
         }
       } catch (err) {

@@ -27,6 +27,14 @@ export default function ResetPasswordPage() {
   const supabase = createClientComponentClient()
 
   useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isCheckingSession) {
+        console.log("[v0] Verification timeout - forcing error state")
+        setError("Verification timed out. Please request a new reset link.")
+        setIsCheckingSession(false)
+      }
+    }, 10000) // 10 second timeout
+
     const handleAuthCallback = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search)
@@ -35,6 +43,7 @@ export default function ResetPasswordPage() {
         const error_code = urlParams.get("error_code")
 
         console.log("[v0] Reset password callback - code:", code, "error:", error_param, "error_code:", error_code)
+        console.log("[v0] Full URL:", window.location.href)
 
         // Handle URL errors first
         if (error_param) {
@@ -44,27 +53,57 @@ export default function ResetPasswordPage() {
           } else {
             setError("Invalid reset link. Please request a new one.")
           }
+          clearTimeout(timeoutId)
           setIsCheckingSession(false)
           return
         }
 
         if (code) {
           console.log("[v0] Using PKCE flow with code:", code)
-          const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
-          console.log("[v0] exchangeCodeForSession result:", { data: !!data.session, error: sessionError })
+          let retryCount = 0
+          const maxRetries = 3
 
-          if (sessionError) {
-            console.error("[v0] exchangeCodeForSession error:", sessionError)
-            setError("Invalid or expired reset link. Please request a new one.")
-          } else if (data.session) {
-            console.log("[v0] PKCE session established successfully")
-            setIsValidSession(true)
-            // Clean up URL
-            window.history.replaceState({}, document.title, window.location.pathname)
-          } else {
-            console.log("[v0] No session returned from exchangeCodeForSession")
-            setError("Unable to establish session. Please request a new reset link.")
+          while (retryCount < maxRetries) {
+            try {
+              const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
+
+              console.log(`[v0] exchangeCodeForSession attempt ${retryCount + 1}:`, {
+                data: !!data.session,
+                error: sessionError?.message,
+              })
+
+              if (sessionError) {
+                if (retryCount === maxRetries - 1) {
+                  console.error("[v0] Final exchangeCodeForSession error:", sessionError)
+                  setError("Invalid or expired reset link. Please request a new one.")
+                  break
+                }
+                retryCount++
+                await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second before retry
+                continue
+              }
+
+              if (data.session) {
+                console.log("[v0] PKCE session established successfully")
+                setIsValidSession(true)
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname)
+                break
+              } else {
+                console.log("[v0] No session returned from exchangeCodeForSession")
+                setError("Unable to establish session. Please request a new reset link.")
+                break
+              }
+            } catch (err) {
+              console.error(`[v0] exchangeCodeForSession attempt ${retryCount + 1} failed:`, err)
+              if (retryCount === maxRetries - 1) {
+                setError("Network error. Please check your connection and try again.")
+                break
+              }
+              retryCount++
+              await new Promise((resolve) => setTimeout(resolve, 1000))
+            }
           }
         } else {
           console.log("[v0] No code parameter, checking hash-based tokens")
@@ -128,11 +167,14 @@ export default function ResetPasswordPage() {
         console.error("[v0] Reset password auth callback error:", err)
         setError("An error occurred processing the reset link. Please try again.")
       } finally {
+        clearTimeout(timeoutId)
         setIsCheckingSession(false)
       }
     }
 
     handleAuthCallback()
+
+    return () => clearTimeout(timeoutId)
   }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -181,6 +223,7 @@ export default function ResetPasswordPage() {
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 <p className="mt-2 text-sm text-muted-foreground">Verifying reset link...</p>
+                <p className="mt-1 text-xs text-muted-foreground">This may take a few seconds</p>
               </div>
             </CardContent>
           </Card>

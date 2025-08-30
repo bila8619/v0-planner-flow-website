@@ -27,6 +27,8 @@ export default function ResetPasswordPage() {
     setIsLoading(true)
     setError("")
 
+    console.log("[v0] Starting password update process")
+
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       setIsLoading(false)
@@ -40,19 +42,38 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      console.log("[v0] Current session before update:", session ? "exists" : "none")
+
+      // Add timeout to prevent infinite loading
+      const updatePromise = supabase.auth.updateUser({
         password: password,
       })
 
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Password update timed out")), 30000),
+      )
+
+      console.log("[v0] Calling updateUser...")
+      const { error } = (await Promise.race([updatePromise, timeoutPromise])) as any
+
+      console.log("[v0] UpdateUser completed, error:", error)
+
       if (error) {
+        console.log("[v0] Password update error:", error.message)
         setError(error.message)
       } else {
+        console.log("[v0] Password updated successfully, redirecting...")
         // Password updated successfully, redirect to login
         router.push("/auth/login?message=Password updated successfully")
       }
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.")
+    } catch (err: any) {
+      console.log("[v0] Password update exception:", err.message)
+      setError(err.message || "An unexpected error occurred. Please try again.")
     } finally {
+      console.log("[v0] Password update process completed")
       setIsLoading(false)
     }
   }

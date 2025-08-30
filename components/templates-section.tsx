@@ -44,7 +44,7 @@ export function TemplatesSection() {
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               {...strokeProps}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 002-2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 002-2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
             />
           </svg>
         )
@@ -178,48 +178,20 @@ export function TemplatesSection() {
                       isLocked ? "opacity-75" : ""
                     }`}
                   >
-                    {isLocked && (
-                      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-                        <div className="text-center p-6">
-                          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                          <h4 className="font-semibold text-foreground mb-2">Template Locked</h4>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {user ? "Upgrade your plan to access this template" : "Sign in to access templates"}
-                          </p>
-                          {user ? (
-                            <Link href="/pricing">
-                              <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                                Upgrade Plan
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Link href="/auth/login">
-                              <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                                Sign In
-                              </Button>
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col items-start gap-2">
                           <div className="text-3xl">{template.emoji}</div>
-                          <CardTitle
-                            className={`text-lg group-hover:text-primary transition-colors ${
-                              isLocked ? "text-card-foreground relative z-20" : "text-card-foreground"
-                            }`}
-                          >
+                          <CardTitle className="text-lg group-hover:text-primary transition-colors text-card-foreground flex items-center gap-2">
                             {template.name}
+                            {isLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                           </CardTitle>
                         </div>
                         <Badge
                           variant="secondary"
                           className={`text-xs ${
                             hasAccess ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                          } ${isLocked ? "relative z-20" : ""}`}
+                          }`}
                         >
                           {hasAccess ? "Available" : "Locked"}
                         </Badge>
@@ -252,9 +224,9 @@ export function TemplatesSection() {
                         <Link href={user ? "/pricing" : "/auth/login"}>
                           <Button
                             variant="outline"
-                            className="w-full hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent cursor-pointer"
+                            className="w-full bg-red-500 text-white border-red-500 cursor-pointer"
                           >
-                            {user ? "Upgrade to Access" : "Sign In to Access"}
+                            {user ? "Upgrade" : "Upgrade to Access"}
                           </Button>
                         </Link>
                       )}

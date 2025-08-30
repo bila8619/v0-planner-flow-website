@@ -152,6 +152,18 @@ export function TemplatesSection() {
               </div>
             </div>
 
+            {key === "premium" && (
+              <div className="mb-8 p-6 bg-muted/30 rounded-lg border border-border">
+                <h4 className="text-lg font-semibold text-foreground mb-3">Popular Planner Templates Include:</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Career Planner, Student Organizer, Business Roadmap, Fitness Planner, Wedding Planner, Travel
+                  Itinerary, Budget Tracker, Habit Builder, Project Manager, Content Calendar, Meal Planner, Reading
+                  List, Goal Tracker, Time Blocker, Daily Journal
+                  <span className="font-medium text-foreground"> ...and many more</span>
+                </p>
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {category.templates.map((template, index) => {
                 const globalIndex = getGlobalTemplateIndex(key, index)
@@ -195,7 +207,11 @@ export function TemplatesSection() {
                       <div className="flex items-start justify-between">
                         <div className="flex flex-col items-start gap-2">
                           <div className="text-3xl">{template.emoji}</div>
-                          <CardTitle className="text-lg text-card-foreground group-hover:text-primary transition-colors">
+                          <CardTitle
+                            className={`text-lg group-hover:text-primary transition-colors ${
+                              isLocked ? "text-card-foreground relative z-20" : "text-card-foreground"
+                            }`}
+                          >
                             {template.name}
                           </CardTitle>
                         </div>
@@ -203,7 +219,7 @@ export function TemplatesSection() {
                           variant="secondary"
                           className={`text-xs ${
                             hasAccess ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                          }`}
+                          } ${isLocked ? "relative z-20" : ""}`}
                         >
                           {hasAccess ? "Available" : "Locked"}
                         </Badge>

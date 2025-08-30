@@ -43,10 +43,16 @@ export default function ResetPasswordPage() {
       console.log("[v0] Checking session for password reset")
 
       try {
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Session check timeout")), 10000),
+        )
+
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession()
+        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
+
         console.log("[v0] Session check result:", { session: !!session, error })
 
         if (error) {
@@ -67,7 +73,11 @@ export default function ResetPasswordPage() {
         setIsValidSession(true)
       } catch (err) {
         console.log("[v0] Session validation error:", err)
-        setError("Failed to validate session. Please try again.")
+        if (err instanceof Error && err.message === "Session check timeout") {
+          setError("Session validation timed out. Please try the reset link again.")
+        } else {
+          setError("Failed to validate session. Please try again.")
+        }
         setIsValidSession(false)
       }
     }

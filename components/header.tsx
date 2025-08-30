@@ -8,7 +8,7 @@ import { Menu, X, User, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/auth-provider"
 
-export function Header() {
+function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, loading } = useAuth()
 
@@ -227,3 +227,6 @@ export function Header() {
     </>
   )
 }
+
+export default Header
+export { Header }

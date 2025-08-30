@@ -18,14 +18,11 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     console.log("[v0] Supabase client created successfully")
 
-    const { data, error } = await supabase.auth.verifyOtp({
-      type: type as "recovery",
-      token_hash,
-    })
+    const { data, error } = await supabase.auth.exchangeCodeForSession(token_hash)
 
-    console.log("[v0] VerifyOtp result - data:", data, "error:", error)
+    console.log("[v0] ExchangeCodeForSession result - data:", data, "error:", error)
 
-    if (!error && data) {
+    if (!error && data?.session) {
       console.log("[v0] Token verification successful, redirecting to reset password page")
       return NextResponse.redirect(new URL(next, request.url))
     }

@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
@@ -33,63 +32,40 @@ export default function ResetPasswordPage() {
       try {
         const error = searchParams.get("error")
         const errorCode = searchParams.get("error_code")
-        const errorDescription = searchParams.get("error_description")
 
         if (error) {
           if (errorCode === "otp_expired") {
             setError("Reset link has expired. Please request a new one.")
           } else {
-            setError(errorDescription || "Invalid reset link. Please request a new one.")
+            setError("Invalid reset link. Please request a new one.")
           }
           setIsCheckingSession(false)
           return
         }
 
         const code = searchParams.get("code")
-
         if (code) {
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
           if (exchangeError) {
-            console.error("Code exchange error:", exchangeError)
             setError("Invalid or expired reset link. Please request a new one.")
           } else if (data.session) {
             setIsValidSession(true)
             window.history.replaceState({}, document.title, window.location.pathname)
+          } else {
+            setError("Unable to establish session. Please request a new reset link.")
           }
         } else {
-          const hashParams = new URLSearchParams(window.location.hash.substring(1))
-          const accessToken = hashParams.get("access_token")
-          const refreshToken = hashParams.get("refresh_token")
-          const type = hashParams.get("type")
-
-          if (accessToken && refreshToken && type === "recovery") {
-            const { data, error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            })
-
-            if (sessionError) {
-              console.error("Session error:", sessionError)
-              setError("Invalid or expired reset link. Please request a new one.")
-            } else if (data.session) {
-              setIsValidSession(true)
-              window.history.replaceState({}, document.title, window.location.pathname)
-            }
+          const {
+            data: { session },
+          } = await supabase.auth.getSession()
+          if (session) {
+            setIsValidSession(true)
           } else {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession()
-
-            if (session) {
-              setIsValidSession(true)
-            } else {
-              setError("Invalid or expired reset link. Please request a new one.")
-            }
+            setError("Invalid or expired reset link. Please request a new one.")
           }
         }
       } catch (err) {
-        console.error("Auth callback error:", err)
         setError("An error occurred processing the reset link. Please try again.")
       } finally {
         setIsCheckingSession(false)

@@ -62,31 +62,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const clearAuthState = () => {
+    console.log("[v0] Clearing auth state")
+    setUser(null)
+    setUserProfile(null)
+  }
+
   useEffect(() => {
     const getInitialData = async () => {
       try {
+        console.log("[v0] Getting initial auth data")
+
         const {
-          data: { session },
-          error: sessionError,
+          data: { session: currentSession },
         } = await supabase.auth.getSession()
 
-        if (sessionError) {
-          console.error("Session error:", sessionError)
-          throw sessionError
+        let session = currentSession
+
+        // Only refresh if there's an existing session
+        if (currentSession) {
+          console.log("[v0] Refreshing existing session")
+          const {
+            data: { session: refreshedSession },
+            error: refreshError,
+          } = await supabase.auth.refreshSession()
+
+          if (refreshError) {
+            console.error("Session refresh error:", refreshError)
+            // Fall back to current session if refresh fails
+            session = currentSession
+          } else {
+            session = refreshedSession
+          }
         }
 
         if (session?.user) {
+          console.log("[v0] User session found:", session.user.email)
           setUser(session.user)
           const profile = await fetchProfile(session.user.id)
           setUserProfile(profile)
         } else {
-          setUser(null)
-          setUserProfile(null)
+          console.log("[v0] No user session found")
+          clearAuthState()
         }
       } catch (error) {
         console.error("Error fetching initial auth data:", error)
-        setUser(null)
-        setUserProfile(null)
+        clearAuthState()
       } finally {
         setLoading(false)
       }
@@ -95,13 +116,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialData()
 
     const authStateChange = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[v0] Auth state change:", event, session?.user?.email || "no user")
+
       if (session?.user) {
         setUser(session.user)
         const profile = await fetchProfile(session.user.id)
         setUserProfile(profile)
       } else {
-        setUser(null)
-        setUserProfile(null)
+        clearAuthState()
       }
       setLoading(false)
     })

@@ -21,7 +21,6 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [isValidSession, setIsValidSession] = useState<boolean | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -34,55 +33,11 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const errorParam = searchParams.get("error")
-    if (errorParam === "invalid_link") {
+    if (errorParam === "invalid_token") {
       setError("Invalid or expired reset link. Please request a new password reset.")
+    } else if (errorParam === "missing_params") {
+      setError("Invalid reset link format. Please request a new password reset.")
     }
-
-    const validateSession = async () => {
-      const supabase = createClient()
-      console.log("[v0] Checking session for password reset")
-
-      try {
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Session check timeout")), 10000),
-        )
-
-        const {
-          data: { session },
-          error,
-        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
-
-        console.log("[v0] Session check result:", { session: !!session, error })
-
-        if (error) {
-          console.log("[v0] Session error:", error)
-          setError("Session error. Please try the reset link again.")
-          setIsValidSession(false)
-          return
-        }
-
-        if (!session) {
-          console.log("[v0] No session found")
-          setError("No valid session. Please use the reset link from your email.")
-          setIsValidSession(false)
-          return
-        }
-
-        console.log("[v0] Valid session found for user:", session.user?.email)
-        setIsValidSession(true)
-      } catch (err) {
-        console.log("[v0] Session validation error:", err)
-        if (err instanceof Error && err.message === "Session check timeout") {
-          setError("Session validation timed out. Please try the reset link again.")
-        } else {
-          setError("Failed to validate session. Please try again.")
-        }
-        setIsValidSession(false)
-      }
-    }
-
-    validateSession()
   }, [searchParams])
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -104,26 +59,14 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      console.log("[v0] Starting password update")
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (!session) {
-        throw new Error("No valid session found. Please use the reset link from your email.")
-      }
-
-      console.log("[v0] Updating password for user:", session.user?.email)
       const { error } = await supabase.auth.updateUser({
         password: password,
       })
 
       if (error) {
-        console.log("[v0] Password update error:", error)
         throw error
       }
 
-      console.log("[v0] Password updated successfully")
       setSuccess(true)
 
       setTimeout(async () => {
@@ -131,35 +74,13 @@ export default function ResetPasswordPage() {
         router.push("/auth/login?message=password_updated")
       }, 2000)
     } catch (error: unknown) {
-      console.log("[v0] Password update failed:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (isValidSession === null) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <Header />
-        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-md">
-            <Card className="shadow-lg text-center">
-              <CardHeader className="space-y-4">
-                <CardTitle className="text-2xl font-bold text-foreground">Validating Session...</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Please wait while we validate your reset link.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  if (isValidSession === false) {
+  if (error && searchParams.get("error")) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -171,9 +92,7 @@ export default function ResetPasswordPage() {
                   <AlertCircle className="h-8 w-8 text-red-600" />
                 </div>
                 <CardTitle className="text-2xl font-bold text-foreground">Invalid Reset Link</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  {error || "Your reset link is invalid or has expired. Please request a new password reset."}
-                </CardDescription>
+                <CardDescription className="text-muted-foreground">{error}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Link href="/auth/forgot-password">
@@ -285,7 +204,7 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
 
-                {error && (
+                {error && !searchParams.get("error") && (
                   <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 flex items-start space-x-2">
                     <AlertCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-destructive">{error}</p>

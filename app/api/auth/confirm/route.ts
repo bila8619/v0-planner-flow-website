@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 export async function GET(request: NextRequest) {
@@ -8,9 +8,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/auth/reset-password"
 
   if (!token_hash || type !== "recovery") {
-    return NextResponse.redirect(
-      new URL("/auth/reset-password?error=missing_params", request.url)
-    )
+    return NextResponse.redirect(new URL("/auth/reset-password?error=missing_params", request.url))
   }
 
   // prepare response object
@@ -28,14 +26,14 @@ export async function GET(request: NextRequest) {
           cookies.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, {
               ...options,
-              secure: true,          // force secure cookies
-              sameSite: "lax",       // allow cross-site redirect
-              path: "/",             // ensure cookie applies everywhere
+              secure: true, // force secure cookies
+              sameSite: "lax", // allow cross-site redirect
+              path: "/", // ensure cookie applies everywhere
             })
           })
         },
       },
-    }
+    },
   )
 
   // verify recovery token → establish session
@@ -46,9 +44,17 @@ export async function GET(request: NextRequest) {
 
   if (error || !data?.session) {
     console.error("[auth/confirm] verifyOtp failed:", error?.message)
-    return NextResponse.redirect(
-      new URL("/auth/reset-password?error=invalid_token", request.url)
-    )
+    return NextResponse.redirect(new URL("/auth/reset-password?error=invalid_token", request.url))
+  }
+
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  })
+
+  if (sessionError) {
+    console.error("[auth/confirm] setSession failed:", sessionError.message)
+    return NextResponse.redirect(new URL("/auth/reset-password?error=session_failed", request.url))
   }
 
   console.log("[auth/confirm] Session established for user:", data.session.user.id)

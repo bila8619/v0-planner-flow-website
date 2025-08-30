@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@supabase/ssr"
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,32 +8,51 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type")
     const next = searchParams.get("next") ?? "/auth/reset-password"
 
-    console.log("[v0] Confirm route - token_hash:", token_hash, "type:", type)
-
-    if (!token_hash || !type) {
-      console.log("[v0] Missing token_hash or type parameters")
-      return NextResponse.redirect(new URL("/auth/reset-password?error=missing_params", request.url))
+    if (!token_hash || type !== "recovery") {
+      return NextResponse.redirect(
+        new URL("/auth/reset-password?error=missing_params", request.url)
+      )
     }
 
-    const supabase = await createClient()
-    console.log("[v0] Supabase client created successfully")
+    // Prepare redirect response early
+    const redirectUrl = new URL(next, request.url)
+    const response = NextResponse.redirect(redirectUrl)
 
+    // Create Supabase client that can persist cookies onto `response`
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => request.cookies.getAll(),
+          setAll: (cookies) => {
+            cookies.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
+
+    // Verify recovery token & establish session
     const { data, error } = await supabase.auth.verifyOtp({
+      type: "recovery",
       token_hash,
-      type: type as "recovery",
     })
 
-    console.log("[v0] VerifyOtp result - data:", data, "error:", error)
-
-    if (!error && data?.session) {
-      console.log("[v0] Token verification successful, redirecting to reset password page")
-      return NextResponse.redirect(new URL(next, request.url))
+    if (error || !data?.session) {
+      console.error("[auth/confirm] Token verification failed:", error?.message)
+      return NextResponse.redirect(
+        new URL("/auth/reset-password?error=invalid_token", request.url)
+      )
     }
 
-    console.log("[v0] Token verification failed:", error?.message)
-    return NextResponse.redirect(new URL("/auth/reset-password?error=invalid_token", request.url))
+    console.log("[auth/confirm] Recovery token verified, session established")
+    return response
   } catch (err) {
-    console.error("[v0] API confirm route error:", err)
-    return NextResponse.redirect(new URL("/auth/reset-password?error=server_error", request.url))
+    console.error("[auth/confirm] Unexpected error:", err)
+    return NextResponse.redirect(
+      new URL("/auth/reset-password?error=server_error", request.url)
+    )
   }
 }

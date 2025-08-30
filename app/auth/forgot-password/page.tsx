@@ -27,29 +27,20 @@ export default function ForgotPasswordPage() {
     setError("")
 
     try {
-      const { data: userData, error: userError } = await supabase
-        .from("auth.users")
-        .select("email")
-        .eq("email", email)
-        .single()
-
-      // If user doesn't exist, show account creation message
-      if (userError || !userData) {
-        setError("No account found with this email address.")
-        setMessage("Don't have an account? Create one to get started.")
-        setIsLoading(false)
-        return
-      }
-
       const redirectUrl = processEnv.NEXT_PUBLIC_SITE_URL || window.location.origin
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${redirectUrl}/auth/reset-password`,
       })
 
       if (error) {
-        setError(error.message)
+        if (error.message.includes("User not found") || error.message.includes("Invalid email")) {
+          setError("No account found with this email address.")
+          setMessage("Don't have an account? Create one to get started.")
+        } else {
+          setError(error.message)
+        }
       } else {
-        setMessage("Check your email for a password reset link.")
+        setMessage("If an account with this email exists, you'll receive a password reset link shortly.")
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.")

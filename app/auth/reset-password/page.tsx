@@ -27,14 +27,6 @@ export default function ResetPasswordPage() {
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (isCheckingSession) {
-        console.log("[v0] Verification timeout - forcing error state")
-        setError("Verification timed out. Please request a new reset link.")
-        setIsCheckingSession(false)
-      }
-    }, 10000) // 10 second timeout
-
     const handleAuthCallback = async () => {
       try {
         const urlParams = new URLSearchParams(window.location.search)
@@ -53,7 +45,6 @@ export default function ResetPasswordPage() {
           } else {
             setError("Invalid reset link. Please request a new one.")
           }
-          clearTimeout(timeoutId)
           setIsCheckingSession(false)
           return
         }
@@ -61,49 +52,34 @@ export default function ResetPasswordPage() {
         if (code) {
           console.log("[v0] Using PKCE flow with code:", code)
 
-          let retryCount = 0
-          const maxRetries = 3
+          try {
+            const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
-          while (retryCount < maxRetries) {
-            try {
-              const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
+            console.log("[v0] exchangeCodeForSession result:", {
+              hasSession: !!data?.session,
+              hasUser: !!data?.user,
+              error: sessionError?.message,
+            })
 
-              console.log(`[v0] exchangeCodeForSession attempt ${retryCount + 1}:`, {
-                data: !!data.session,
-                error: sessionError?.message,
-              })
-
-              if (sessionError) {
-                if (retryCount === maxRetries - 1) {
-                  console.error("[v0] Final exchangeCodeForSession error:", sessionError)
-                  setError("Invalid or expired reset link. Please request a new one.")
-                  break
-                }
-                retryCount++
-                await new Promise((resolve) => setTimeout(resolve, 1000)) // Wait 1 second before retry
-                continue
-              }
-
-              if (data.session) {
-                console.log("[v0] PKCE session established successfully")
-                setIsValidSession(true)
-                // Clean up URL
-                window.history.replaceState({}, document.title, window.location.pathname)
-                break
+            if (sessionError) {
+              console.error("[v0] exchangeCodeForSession error:", sessionError)
+              if (sessionError.message?.includes("expired")) {
+                setError("Reset link has expired. Please request a new one.")
               } else {
-                console.log("[v0] No session returned from exchangeCodeForSession")
-                setError("Unable to establish session. Please request a new reset link.")
-                break
+                setError("Invalid reset link. Please request a new one.")
               }
-            } catch (err) {
-              console.error(`[v0] exchangeCodeForSession attempt ${retryCount + 1} failed:`, err)
-              if (retryCount === maxRetries - 1) {
-                setError("Network error. Please check your connection and try again.")
-                break
-              }
-              retryCount++
-              await new Promise((resolve) => setTimeout(resolve, 1000))
+            } else if (data?.session) {
+              console.log("[v0] PKCE session established successfully")
+              setIsValidSession(true)
+              // Clean up URL
+              window.history.replaceState({}, document.title, window.location.pathname)
+            } else {
+              console.log("[v0] No session returned from exchangeCodeForSession")
+              setError("Unable to establish session. Please request a new reset link.")
             }
+          } catch (err) {
+            console.error("[v0] exchangeCodeForSession failed:", err)
+            setError("Network error. Please check your connection and try again.")
           }
         } else {
           console.log("[v0] No code parameter, checking hash-based tokens")
@@ -167,14 +143,11 @@ export default function ResetPasswordPage() {
         console.error("[v0] Reset password auth callback error:", err)
         setError("An error occurred processing the reset link. Please try again.")
       } finally {
-        clearTimeout(timeoutId)
         setIsCheckingSession(false)
       }
     }
 
     handleAuthCallback()
-
-    return () => clearTimeout(timeoutId)
   }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {

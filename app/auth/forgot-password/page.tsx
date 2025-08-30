@@ -9,31 +9,28 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { Mail, ArrowLeft } from "lucide-react"
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/api/auth/confirm`,
       })
+
       if (error) throw error
-      router.push("/dashboard")
+      setSuccess(true)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
@@ -41,22 +38,70 @@ export default function LoginPage() {
     }
   }
 
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+          <div className="w-full max-w-md">
+            <Card className="shadow-lg text-center">
+              <CardHeader className="space-y-4">
+                <div className="mx-auto w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center">
+                  <Mail className="h-8 w-8 text-primary" />
+                </div>
+                <CardTitle className="text-2xl font-bold text-foreground">Check Your Email</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  We've sent a password reset link to your email address
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                  <p className="text-sm text-muted-foreground">
+                    Please check your email and click the reset link to create a new password. The link will expire in 1
+                    hour.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <Link href="/auth/login">
+                    <Button className="w-full bg-primary hover:bg-primary/90">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Sign In
+                    </Button>
+                  </Link>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
+                    Didn't receive the email? Check your spam folder or try again
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
 
-      {/* Main Content */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-md">
           <Card className="shadow-lg">
             <CardHeader className="text-center space-y-2">
-              <CardTitle className="text-2xl font-bold text-foreground">Welcome Back</CardTitle>
+              <CardTitle className="text-2xl font-bold text-foreground">Reset Your Password</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Sign in to access your digital planning templates
+                Enter your email address and we'll send you a link to reset your password
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleForgotPassword} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-sm font-medium text-foreground">
                     Email Address
@@ -71,37 +116,6 @@ export default function LoginPage() {
                     className="h-11"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                    Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <div className="text-right">
-                    <Link
-                      href="/auth/forgot-password"
-                      className="text-sm text-primary hover:text-primary/80 underline underline-offset-4"
-                    >
-                      Forgot your password?
-                    </Link>
-                  </div>
-                </div>
 
                 {error && (
                   <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
@@ -110,18 +124,18 @@ export default function LoginPage() {
                 )}
 
                 <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? "Sending reset link..." : "Send Reset Link"}
                 </Button>
               </form>
 
               <div className="mt-6 pt-6 border-t border-border">
                 <p className="text-center text-sm text-muted-foreground">
-                  Don't have an account?{" "}
+                  Remember your password?{" "}
                   <Link
-                    href="/auth/sign-up"
+                    href="/auth/login"
                     className="text-primary hover:text-primary/80 font-medium underline underline-offset-4"
                   >
-                    Create one now
+                    Sign in here
                   </Link>
                 </p>
               </div>

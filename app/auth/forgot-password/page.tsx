@@ -27,6 +27,20 @@ export default function ForgotPasswordPage() {
     setError("")
 
     try {
+      const { data: userData, error: userError } = await supabase
+        .from("auth.users")
+        .select("email")
+        .eq("email", email)
+        .single()
+
+      // If user doesn't exist, show account creation message
+      if (userError || !userData) {
+        setError("No account found with this email address.")
+        setMessage("Don't have an account? Create one to get started.")
+        setIsLoading(false)
+        return
+      }
+
       const redirectUrl = processEnv.NEXT_PUBLIC_SITE_URL || window.location.origin
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${redirectUrl}/auth/reset-password`,
@@ -90,7 +104,16 @@ export default function ForgotPasswordPage() {
 
                 {message && (
                   <Alert className="border-green-200 bg-green-50">
-                    <AlertDescription className="text-green-700">{message}</AlertDescription>
+                    <AlertDescription className="text-green-700">
+                      {message}
+                      {message.includes("Don't have an account") && (
+                        <div className="mt-2">
+                          <Link href="/auth/sign-up" className="text-red-600 hover:text-red-700 font-medium underline">
+                            Create Account
+                          </Link>
+                        </div>
+                      )}
+                    </AlertDescription>
                   </Alert>
                 )}
 

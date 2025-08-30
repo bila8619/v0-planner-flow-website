@@ -124,7 +124,8 @@ export default function ResetPasswordPage() {
       if (error) {
         setError(error.message)
       } else {
-        router.push("/auth/login?message=Password updated successfully")
+        await supabase.auth.signOut()
+        router.push("/auth/login?message=Password updated successfully. Please sign in with your new password.")
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.")

@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,17 +24,22 @@ export default function ResetPasswordPage() {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
 
   const router = useRouter()
-  const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const error = searchParams.get("error")
-        const errorCode = searchParams.get("error_code")
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get("code")
+        const error_param = urlParams.get("error")
+        const error_code = urlParams.get("error_code")
 
-        if (error) {
-          if (errorCode === "otp_expired") {
+        console.log("[v0] Reset password callback - code:", code, "error:", error_param, "error_code:", error_code)
+
+        // Handle URL errors first
+        if (error_param) {
+          console.log("[v0] URL contains error parameters")
+          if (error_code === "otp_expired") {
             setError("Reset link has expired. Please request a new one.")
           } else {
             setError("Invalid reset link. Please request a new one.")
@@ -43,29 +48,84 @@ export default function ResetPasswordPage() {
           return
         }
 
-        const code = searchParams.get("code")
         if (code) {
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          console.log("[v0] Using PKCE flow with code:", code)
+          const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
 
-          if (exchangeError) {
+          console.log("[v0] exchangeCodeForSession result:", { data: !!data.session, error: sessionError })
+
+          if (sessionError) {
+            console.error("[v0] exchangeCodeForSession error:", sessionError)
             setError("Invalid or expired reset link. Please request a new one.")
           } else if (data.session) {
+            console.log("[v0] PKCE session established successfully")
             setIsValidSession(true)
+            // Clean up URL
             window.history.replaceState({}, document.title, window.location.pathname)
           } else {
+            console.log("[v0] No session returned from exchangeCodeForSession")
             setError("Unable to establish session. Please request a new reset link.")
           }
         } else {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession()
-          if (session) {
-            setIsValidSession(true)
+          console.log("[v0] No code parameter, checking hash-based tokens")
+          const hashParams = new URLSearchParams(window.location.hash.substring(1))
+          const accessToken = hashParams.get("access_token")
+          const refreshToken = hashParams.get("refresh_token")
+          const hashError = hashParams.get("error")
+          const hashErrorCode = hashParams.get("error_code")
+
+          console.log(
+            "[v0] Hash tokens - access_token:",
+            !!accessToken,
+            "refresh_token:",
+            !!refreshToken,
+            "error:",
+            hashError,
+          )
+
+          if (hashError) {
+            if (hashErrorCode === "otp_expired") {
+              setError("Reset link has expired. Please request a new one.")
+            } else {
+              setError("Invalid reset link. Please request a new one.")
+            }
+          } else if (accessToken && refreshToken) {
+            console.log("[v0] Using legacy hash-based flow")
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+
+            console.log("[v0] setSession result:", { data: !!data.session, error: sessionError })
+
+            if (sessionError) {
+              console.error("[v0] setSession error:", sessionError)
+              setError("Invalid or expired reset link. Please request a new one.")
+            } else if (data.session) {
+              console.log("[v0] Legacy session established successfully")
+              setIsValidSession(true)
+              window.history.replaceState({}, document.title, window.location.pathname)
+            } else {
+              console.log("[v0] No session returned from setSession")
+              setError("Unable to establish session. Please request a new reset link.")
+            }
           } else {
-            setError("Invalid or expired reset link. Please request a new one.")
+            console.log("[v0] No tokens found, checking existing session")
+            const {
+              data: { session },
+            } = await supabase.auth.getSession()
+
+            console.log("[v0] Existing session check:", !!session)
+
+            if (session) {
+              setIsValidSession(true)
+            } else {
+              setError("Invalid or expired reset link. Please request a new one.")
+            }
           }
         }
       } catch (err) {
+        console.error("[v0] Reset password auth callback error:", err)
         setError("An error occurred processing the reset link. Please try again.")
       } finally {
         setIsCheckingSession(false)
@@ -73,7 +133,7 @@ export default function ResetPasswordPage() {
     }
 
     handleAuthCallback()
-  }, [supabase, searchParams])
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,6 +164,7 @@ export default function ResetPasswordPage() {
         router.push("/auth/login?message=Password updated successfully. Please sign in with your new password.")
       }
     } catch (err) {
+      console.error("[v0] Password update error:", err)
       setError("An unexpected error occurred. Please try again.")
     } finally {
       setIsLoading(false)

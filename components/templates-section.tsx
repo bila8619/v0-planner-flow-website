@@ -44,7 +44,7 @@ export function TemplatesSection() {
           <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               {...strokeProps}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 002-2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 002-2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"
             />
           </svg>
         )
@@ -224,9 +224,9 @@ export function TemplatesSection() {
                         <Link href={user ? "/pricing" : "/auth/login"}>
                           <Button
                             variant="outline"
-                            className="w-full bg-red-500 text-white border-red-500 cursor-pointer"
+                            className="w-full hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent cursor-pointer"
                           >
-                            {user ? "Upgrade" : "Upgrade to Access"}
+                            {user ? "Upgrade" : "Sign In to Access"}
                           </Button>
                         </Link>
                       )}

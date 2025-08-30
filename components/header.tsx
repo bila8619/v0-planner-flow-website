@@ -7,10 +7,14 @@ import { useState } from "react"
 import { Menu, X, User, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { usePathname } from "next/navigation"
 
 function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, loading } = useAuth()
+  const pathname = usePathname()
+  const isPasswordResetPage = pathname === "/auth/reset-password"
+  const showAuthenticatedButtons = user && !isPasswordResetPage
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -90,7 +94,7 @@ function Header() {
                   <div className="animate-pulse">
                     <div className="h-8 w-16 bg-muted rounded"></div>
                   </div>
-                ) : user ? (
+                ) : showAuthenticatedButtons ? (
                   <>
                     <Link href="/dashboard">
                       <Button variant="ghost" size="sm" className="flex items-center gap-2">
@@ -187,7 +191,7 @@ function Header() {
                     <div className="animate-pulse">
                       <div className="h-10 bg-muted rounded"></div>
                     </div>
-                  ) : user ? (
+                  ) : showAuthenticatedButtons ? (
                     <>
                       <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
                         <Button variant="ghost" className="w-full flex items-center gap-2">

@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +20,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("")
 
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,17 +47,16 @@ export default function ResetPasswordPage() {
       } = await supabase.auth.getSession()
       console.log("[v0] Current session before update:", session ? "exists" : "none")
 
-      // Add timeout to prevent infinite loading
-      const updatePromise = supabase.auth.updateUser({
-        password: password,
-      })
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Password update timed out")), 30000),
-      )
+      if (!session) {
+        setError("No active session found. Please try the reset link again.")
+        setIsLoading(false)
+        return
+      }
 
       console.log("[v0] Calling updateUser...")
-      const { error } = (await Promise.race([updatePromise, timeoutPromise])) as any
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+      })
 
       console.log("[v0] UpdateUser completed, error:", error)
 
@@ -66,7 +65,6 @@ export default function ResetPasswordPage() {
         setError(error.message)
       } else {
         console.log("[v0] Password updated successfully, redirecting...")
-        // Password updated successfully, redirect to login
         router.push("/auth/login?message=Password updated successfully")
       }
     } catch (err: any) {

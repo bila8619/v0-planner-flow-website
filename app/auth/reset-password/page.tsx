@@ -13,6 +13,8 @@ import { useState, useEffect } from "react"
 import { CheckCircle } from "lucide-react"
 
 export default function ResetPasswordPage() {
+  console.log("[v0] ResetPasswordPage component mounted")
+
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -21,10 +23,28 @@ export default function ResetPasswordPage() {
   const router = useRouter()
 
   useEffect(() => {
+    console.log("[v0] useEffect triggered - checking auth session")
+
     const handleAuthCallback = async () => {
+      console.log("[v0] Creating Supabase client")
       const supabase = createClient()
-      const { error } = await supabase.auth.getSession()
+
+      console.log("[v0] Calling supabase.auth.getSession()")
+      const { data, error } = await supabase.auth.getSession()
+
+      console.log("[v0] getSession response:", {
+        hasSession: !!data.session,
+        sessionId: data.session?.access_token?.substring(0, 20) + "...",
+        error: error?.message,
+      })
+
       if (error) {
+        console.log("[v0] Session error detected:", error.message)
+        setError("Invalid or expired reset link")
+      } else if (data.session) {
+        console.log("[v0] Valid session found - user can reset password")
+      } else {
+        console.log("[v0] No session found - may be invalid reset link")
         setError("Invalid or expired reset link")
       }
     }
@@ -33,40 +53,68 @@ export default function ResetPasswordPage() {
   }, [])
 
   const handleResetPassword = async (e: React.FormEvent) => {
+    console.log("[v0] handleResetPassword triggered")
     e.preventDefault()
+
+    console.log("[v0] Creating Supabase client for password update")
     const supabase = createClient()
+
+    console.log("[v0] Setting loading state to true")
     setIsLoading(true)
     setError(null)
 
+    console.log("[v0] Validating password match")
     if (password !== confirmPassword) {
+      console.log("[v0] Password validation failed - passwords do not match")
       setError("Passwords do not match")
       setIsLoading(false)
       return
     }
 
+    console.log("[v0] Validating password length")
     if (password.length < 6) {
+      console.log("[v0] Password validation failed - too short")
       setError("Password must be at least 6 characters long")
       setIsLoading(false)
       return
     }
 
+    console.log("[v0] Password validation passed - calling updateUser")
     try {
-      const { error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         password: password,
       })
-      if (error) throw error
+
+      console.log("[v0] updateUser response:", {
+        hasUser: !!data.user,
+        userId: data.user?.id,
+        error: error?.message,
+      })
+
+      if (error) {
+        console.log("[v0] updateUser error:", error.message)
+        throw error
+      }
+
+      console.log("[v0] Password update successful - setting success state")
       setSuccess(true)
+
+      console.log("[v0] Setting redirect timer for 2 seconds")
       setTimeout(() => {
+        console.log("[v0] Redirecting to login page")
         router.push("/auth/login")
       }, 2000)
     } catch (error: unknown) {
+      console.log("[v0] Password update failed with error:", error)
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
+      console.log("[v0] Setting loading state to false")
       setIsLoading(false)
     }
   }
 
   if (success) {
+    console.log("[v0] Rendering success state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -91,6 +139,7 @@ export default function ResetPasswordPage() {
     )
   }
 
+  console.log("[v0] Rendering reset password form")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -111,7 +160,10 @@ export default function ResetPasswordPage() {
                     placeholder="Enter new password"
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      console.log("[v0] Password field updated")
+                      setPassword(e.target.value)
+                    }}
                     className="w-full"
                   />
                 </div>
@@ -123,7 +175,10 @@ export default function ResetPasswordPage() {
                     placeholder="Confirm new password"
                     required
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => {
+                      console.log("[v0] Confirm password field updated")
+                      setConfirmPassword(e.target.value)
+                    }}
                     className="w-full"
                   />
                 </div>

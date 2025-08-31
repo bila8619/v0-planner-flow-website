@@ -11,80 +11,15 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
+import { Eye, EyeOff, CheckCircle } from "lucide-react"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
-
-  useEffect(() => {
-    const checkSession = async () => {
-      console.log("[v0] Reset password page mounted, checking session...")
-      const supabase = createClient()
-      console.log("[v0] Supabase client created")
-
-      console.log("[v0] Checking URL for recovery token parameters...")
-      const urlParams = new URLSearchParams(window.location.search)
-      const tokenHash = urlParams.get("token_hash")
-      const type = urlParams.get("type")
-
-      if (tokenHash && type === "recovery") {
-        console.log("[v0] Found recovery token, verifying with verifyOtp...")
-        try {
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: "recovery",
-          })
-          console.log("[v0] verifyOtp response:", { session: !!data.session, error })
-
-          if (data.session) {
-            console.log("[v0] Session established via verifyOtp")
-            setHasValidSession(true)
-            return
-          } else if (error) {
-            console.log("[v0] verifyOtp error:", error)
-            setHasValidSession(false)
-            return
-          }
-        } catch (error) {
-          console.log("[v0] verifyOtp failed:", error)
-          setHasValidSession(false)
-          return
-        }
-      }
-
-      console.log("[v0] No recovery token found, checking existing session...")
-      try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession()
-
-        console.log("[v0] getSession() response:", { session: !!session, error })
-        if (session) {
-          console.log("[v0] Session details:", {
-            user_id: session.user?.id,
-            email: session.user?.email,
-            expires_at: session.expires_at,
-          })
-          setHasValidSession(true)
-        } else {
-          console.log("[v0] No session found")
-          setHasValidSession(false)
-        }
-      } catch (error) {
-        console.log("[v0] Error during session check:", error)
-        setHasValidSession(false)
-      }
-    }
-
-    checkSession()
-  }, [])
 
   useEffect(() => {
     if (isSuccess) {
@@ -138,70 +73,6 @@ export default function ResetPasswordPage() {
       console.log("[v0] Setting loading state to false")
       setIsLoading(false)
     }
-  }
-
-  if (hasValidSession === null) {
-    console.log("[v0] Rendering loading state (hasValidSession is null)")
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <Header />
-        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-md">
-            <Card className="shadow-lg">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-center space-y-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <p className="text-center text-sm text-muted-foreground mt-4">Verifying reset link...</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  if (!hasValidSession) {
-    console.log("[v0] Rendering invalid session state")
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <Header />
-
-        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-md">
-            <Card className="shadow-lg">
-              <CardHeader className="text-center space-y-2">
-                <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
-                  <AlertCircle className="h-6 w-6 text-destructive" />
-                </div>
-                <CardTitle className="text-2xl font-bold text-foreground">Invalid Reset Link</CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  This password reset link is invalid or has expired
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Please request a new password reset link to continue.
-                  </p>
-                  <Link href="/auth/forgot-password">
-                    <Button className="w-full">Request New Reset Link</Button>
-                  </Link>
-                  <Link href="/auth/login">
-                    <Button variant="outline" className="w-full bg-transparent">
-                      Back to Sign In
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <Footer />
-      </div>
-    )
   }
 
   if (isSuccess) {

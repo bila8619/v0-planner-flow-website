@@ -144,7 +144,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-sm">
             <Card className="shadow-lg">
               <CardHeader className="text-center space-y-2">
                 <CardTitle className="text-2xl font-bold text-foreground">Invalid Reset Link</CardTitle>

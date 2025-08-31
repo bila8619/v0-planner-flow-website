@@ -58,17 +58,12 @@ export default function ResetPasswordPage() {
       })
 
       try {
-        console.log("[v0] Calling supabase.auth.getSession() with 5-second timeout...")
-
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Session check timeout")), 5000),
-        )
+        console.log("[v0] Calling supabase.auth.getSession()...")
 
         const {
           data: { session },
           error,
-        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
+        } = await supabase.auth.getSession()
 
         console.log("[v0] getSession() response:", { session: !!session, error })
         if (session) {
@@ -86,15 +81,7 @@ export default function ResetPasswordPage() {
         }
       } catch (error) {
         console.log("[v0] Error during session check:", error)
-        if (error instanceof Error && error.message === "Session check timeout") {
-          console.log("[v0] Session check timed out after 5 seconds")
-          if (!accessToken) {
-            setError("Session verification timed out. Please try clicking the reset link again.")
-            setHasValidSession(false)
-          }
-        } else {
-          setHasValidSession(false)
-        }
+        setHasValidSession(false)
       }
 
       return () => {

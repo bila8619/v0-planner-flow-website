@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 import Link from "next/link"
 import { useState } from "react"
 import { ArrowLeft, Mail } from "lucide-react"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -41,10 +41,9 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <>
         <Header />
-
-        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+        <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-background">
           <div className="w-full max-w-sm">
             <Card className="shadow-lg">
               <CardHeader className="text-center">
@@ -71,17 +70,15 @@ export default function ForgotPasswordPage() {
             </Card>
           </div>
         </div>
-
         <Footer />
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <>
       <Header />
-
-      <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+      <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-background">
         <div className="w-full max-w-sm">
           <Card className="shadow-lg">
             <CardHeader className="text-center">
@@ -101,7 +98,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full h-11"
+                    className="w-full"
                   />
                 </div>
                 {error && (
@@ -109,7 +106,7 @@ export default function ForgotPasswordPage() {
                     {error}
                   </div>
                 )}
-                <Button type="submit" className="w-full h-11" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Sending..." : "Send Reset Link"}
                 </Button>
               </form>
@@ -125,8 +122,7 @@ export default function ForgotPasswordPage() {
           </Card>
         </div>
       </div>
-
       <Footer />
-    </div>
+    </>
   )
 }

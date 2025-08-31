@@ -20,12 +20,13 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     console.log("[v0] useEffect triggered - checking auth session")
 
-    const handleAuthCallback = async () => {
+    const checkSession = async () => {
       console.log("[v0] Creating Supabase client")
       const supabase = createClient()
 
@@ -40,16 +41,19 @@ export default function ResetPasswordPage() {
 
       if (error) {
         console.log("[v0] Session error detected:", error.message)
+        setHasValidSession(false)
         setError("Invalid or expired reset link")
       } else if (data.session) {
         console.log("[v0] Valid session found - user can reset password")
+        setHasValidSession(true)
       } else {
-        console.log("[v0] No session found - may be invalid reset link")
-        setError("Invalid or expired reset link")
+        console.log("[v0] No session found - invalid reset link")
+        setHasValidSession(false)
+        setError("Invalid or expired reset link. Please request a new password reset.")
       }
     }
 
-    handleAuthCallback()
+    checkSession()
   }, [])
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -102,7 +106,7 @@ export default function ResetPasswordPage() {
       console.log("[v0] Setting redirect timer for 2 seconds")
       setTimeout(() => {
         console.log("[v0] Redirecting to login page")
-        router.push("/auth/login")
+        router.push("/auth/login?message=Password updated successfully")
       }, 2000)
     } catch (error: unknown) {
       console.log("[v0] Password update failed with error:", error)
@@ -111,6 +115,59 @@ export default function ResetPasswordPage() {
       console.log("[v0] Setting loading state to false")
       setIsLoading(false)
     }
+  }
+
+  if (hasValidSession === null) {
+    console.log("[v0] Rendering loading state (hasValidSession is null)")
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+          <div className="w-full max-w-sm">
+            <Card className="shadow-lg">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Verifying reset link...</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (hasValidSession === false) {
+    console.log("[v0] Rendering error state (no valid session)")
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+          <div className="w-full max-w-md">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center space-y-2">
+                <CardTitle className="text-2xl font-bold text-foreground">Invalid Reset Link</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  This password reset link is invalid or has expired
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Please request a new password reset link to continue.
+                  </p>
+                  <Button onClick={() => router.push("/auth/forgot-password")} className="w-full">
+                    Request New Reset Link
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
   }
 
   if (success) {

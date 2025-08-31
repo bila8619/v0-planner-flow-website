@@ -28,12 +28,47 @@ export default function ResetPasswordPage() {
       const supabase = createClient()
       console.log("[v0] Supabase client created")
 
+      console.log("[v0] Checking URL for auth parameters...")
+      const urlParams = new URLSearchParams(window.location.search)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+
+      const accessToken = urlParams.get("access_token") || hashParams.get("access_token")
+      const refreshToken = urlParams.get("refresh_token") || hashParams.get("refresh_token")
+      const type = urlParams.get("type") || hashParams.get("type")
+
+      console.log("[v0] URL parameters:", {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        type,
+      })
+
+      console.log("[v0] Setting up auth state change listener...")
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("[v0] Auth state change:", { event, hasSession: !!session })
+
+        if (event === "SIGNED_IN" && session) {
+          console.log("[v0] User signed in via auth state change")
+          setHasValidSession(true)
+        } else if (event === "SIGNED_OUT" || !session) {
+          console.log("[v0] User signed out or no session")
+          setHasValidSession(false)
+        }
+      })
+
       try {
-        console.log("[v0] Calling supabase.auth.getSession()...")
+        console.log("[v0] Calling supabase.auth.getSession() with 5-second timeout...")
+
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Session check timeout")), 5000),
+        )
+
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession()
+        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
 
         console.log("[v0] getSession() response:", { session: !!session, error })
         if (session) {
@@ -42,21 +77,38 @@ export default function ResetPasswordPage() {
             email: session.user?.email,
             expires_at: session.expires_at,
           })
-        }
-
-        if (error || !session) {
-          console.log("[v0] No valid session found, setting hasValidSession to false")
+          setHasValidSession(true)
+        } else if (!accessToken) {
+          console.log("[v0] No session and no auth tokens in URL")
           setHasValidSession(false)
         } else {
-          console.log("[v0] Valid session found, setting hasValidSession to true")
-          setHasValidSession(true)
+          console.log("[v0] No current session but auth tokens present, waiting for auth state change...")
         }
       } catch (error) {
         console.log("[v0] Error during session check:", error)
-        setHasValidSession(false)
+        if (error instanceof Error && error.message === "Session check timeout") {
+          console.log("[v0] Session check timed out after 5 seconds")
+          if (!accessToken) {
+            setError("Session verification timed out. Please try clicking the reset link again.")
+            setHasValidSession(false)
+          }
+        } else {
+          setHasValidSession(false)
+        }
+      }
+
+      return () => {
+        console.log("[v0] Cleaning up auth state change subscription")
+        subscription.unsubscribe()
       }
     }
-    checkSession()
+
+    const cleanup = checkSession()
+    return () => {
+      if (cleanup instanceof Promise) {
+        cleanup.then((cleanupFn) => cleanupFn && cleanupFn())
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -122,8 +174,9 @@ export default function ResetPasswordPage() {
           <div className="w-full max-w-md">
             <Card className="shadow-lg">
               <CardContent className="pt-6">
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-center space-y-2">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="text-center text-sm text-muted-foreground mt-4">Verifying reset link...</p>
                 </div>
               </CardContent>
             </Card>

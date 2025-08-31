@@ -6,111 +6,146 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { CheckCircle } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
 
 export default function ResetPasswordPage() {
-  console.log("[v0] ResetPasswordPage component mounted")
-
   const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
+  const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    console.log("[v0] useEffect triggered - checking auth session")
-
     const checkSession = async () => {
-      console.log("[v0] Creating Supabase client")
+      console.log("[v0] Reset password page mounted, checking session...")
       const supabase = createClient()
+      console.log("[v0] Supabase client created")
 
-      console.log("[v0] Calling supabase.auth.getSession()")
-      const { data, error } = await supabase.auth.getSession()
+      console.log("[v0] Checking URL for auth parameters...")
+      const urlParams = new URLSearchParams(window.location.search)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
-      console.log("[v0] getSession response:", {
-        hasSession: !!data.session,
-        sessionId: data.session?.access_token?.substring(0, 20) + "...",
-        error: error?.message,
+      const accessToken = urlParams.get("access_token") || hashParams.get("access_token")
+      const refreshToken = urlParams.get("refresh_token") || hashParams.get("refresh_token")
+      const type = urlParams.get("type") || hashParams.get("type")
+
+      console.log("[v0] URL parameters:", {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        type,
       })
 
-      if (error) {
-        console.log("[v0] Session error detected:", error.message)
+      console.log("[v0] Setting up auth state change listener...")
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log("[v0] Auth state change:", { event, hasSession: !!session })
+
+        if (event === "SIGNED_IN" && session) {
+          console.log("[v0] User signed in via auth state change")
+          setHasValidSession(true)
+        } else if (event === "SIGNED_OUT" || !session) {
+          console.log("[v0] User signed out or no session")
+          setHasValidSession(false)
+        }
+      })
+
+      try {
+        console.log("[v0] Calling supabase.auth.getSession()...")
+
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
+        console.log("[v0] getSession() response:", { session: !!session, error })
+        if (session) {
+          console.log("[v0] Session details:", {
+            user_id: session.user?.id,
+            email: session.user?.email,
+            expires_at: session.expires_at,
+          })
+          setHasValidSession(true)
+        } else if (!accessToken) {
+          console.log("[v0] No session and no auth tokens in URL")
+          setHasValidSession(false)
+        } else {
+          console.log("[v0] No current session but auth tokens present, waiting for auth state change...")
+        }
+      } catch (error) {
+        console.log("[v0] Error during session check:", error)
         setHasValidSession(false)
-        setError("Invalid or expired reset link")
-      } else if (data.session) {
-        console.log("[v0] Valid session found - user can reset password")
-        setHasValidSession(true)
-      } else {
-        console.log("[v0] No session found - invalid reset link")
-        setHasValidSession(false)
-        setError("Invalid or expired reset link. Please request a new password reset.")
+      }
+
+      return () => {
+        console.log("[v0] Cleaning up auth state change subscription")
+        subscription.unsubscribe()
       }
     }
 
-    checkSession()
+    const cleanup = checkSession()
+    return () => {
+      if (cleanup instanceof Promise) {
+        cleanup.then((cleanupFn) => cleanupFn && cleanupFn())
+      }
+    }
   }, [])
 
+  useEffect(() => {
+    if (isSuccess) {
+      console.log("[v0] Password reset successful, starting 2-second redirect timer...")
+      const timer = setTimeout(() => {
+        console.log("[v0] Redirecting to login page...")
+        router.push("/auth/login")
+      }, 2000)
+      return () => {
+        console.log("[v0] Cleanup: clearing redirect timer")
+        clearTimeout(timer)
+      }
+    }
+  }, [isSuccess, router])
+
   const handleResetPassword = async (e: React.FormEvent) => {
-    console.log("[v0] handleResetPassword triggered")
     e.preventDefault()
-
-    console.log("[v0] Creating Supabase client for password update")
+    console.log("[v0] Password reset form submitted")
     const supabase = createClient()
-
-    console.log("[v0] Setting loading state to true")
     setIsLoading(true)
     setError(null)
+    console.log("[v0] Set loading state to true, cleared error")
 
-    console.log("[v0] Validating password match")
-    if (password !== confirmPassword) {
-      console.log("[v0] Password validation failed - passwords do not match")
-      setError("Passwords do not match")
+    if (!password.trim()) {
+      console.log("[v0] Password validation failed: empty password")
+      setError("Please enter a password")
       setIsLoading(false)
       return
     }
 
-    console.log("[v0] Validating password length")
-    if (password.length < 6) {
-      console.log("[v0] Password validation failed - too short")
-      setError("Password must be at least 6 characters long")
-      setIsLoading(false)
-      return
-    }
+    console.log("[v0] Password validation passed, attempting to update user password...")
 
-    console.log("[v0] Password validation passed - calling updateUser")
     try {
-      const { data, error } = await supabase.auth.updateUser({
-        password: password,
-      })
-
-      console.log("[v0] updateUser response:", {
-        hasUser: !!data.user,
-        userId: data.user?.id,
-        error: error?.message,
-      })
+      console.log("[v0] Calling supabase.auth.updateUser() with new password...")
+      const { error } = await supabase.auth.updateUser({ password })
 
       if (error) {
-        console.log("[v0] updateUser error:", error.message)
+        console.log("[v0] updateUser() returned error:", error)
         throw error
       }
 
-      console.log("[v0] Password update successful - setting success state")
-      setSuccess(true)
-
-      console.log("[v0] Setting redirect timer for 2 seconds")
-      setTimeout(() => {
-        console.log("[v0] Redirecting to login page")
-        router.push("/auth/login?message=Password updated successfully")
-      }, 2000)
+      console.log("[v0] Password update successful!")
+      console.log("[v0] Setting success state to true...")
+      setIsSuccess(true)
     } catch (error: unknown) {
       console.log("[v0] Password update failed with error:", error)
-      setError(error instanceof Error ? error.message : "An error occurred")
+      const errorMessage = error instanceof Error ? error.message : "An error occurred"
+      console.log("[v0] Setting error message:", errorMessage)
+      setError(errorMessage)
     } finally {
       console.log("[v0] Setting loading state to false")
       setIsLoading(false)
@@ -123,11 +158,12 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-md">
             <Card className="shadow-lg">
               <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Verifying reset link...</p>
+                <div className="flex items-center justify-center space-y-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <p className="text-center text-sm text-muted-foreground mt-4">Verifying reset link...</p>
                 </div>
               </CardContent>
             </Card>
@@ -138,15 +174,19 @@ export default function ResetPasswordPage() {
     )
   }
 
-  if (hasValidSession === false) {
-    console.log("[v0] Rendering error state (no valid session)")
+  if (!hasValidSession) {
+    console.log("[v0] Rendering invalid session state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
+
         <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-md">
             <Card className="shadow-lg">
               <CardHeader className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+                  <AlertCircle className="h-6 w-6 text-destructive" />
+                </div>
                 <CardTitle className="text-2xl font-bold text-foreground">Invalid Reset Link</CardTitle>
                 <CardDescription className="text-muted-foreground">
                   This password reset link is invalid or has expired
@@ -157,101 +197,115 @@ export default function ResetPasswordPage() {
                   <p className="text-sm text-muted-foreground text-center">
                     Please request a new password reset link to continue.
                   </p>
-                  <Button onClick={() => router.push("/auth/forgot-password")} className="w-full">
-                    Request New Reset Link
-                  </Button>
+                  <Link href="/auth/forgot-password">
+                    <Button className="w-full">Request New Reset Link</Button>
+                  </Link>
+                  <Link href="/auth/login">
+                    <Button variant="outline" className="w-full bg-transparent">
+                      Back to Sign In
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
+
         <Footer />
       </div>
     )
   }
 
-  if (success) {
+  if (isSuccess) {
     console.log("[v0] Rendering success state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
+
         <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-md">
             <Card className="shadow-lg">
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <CheckCircle className="h-6 w-6 text-primary" />
+              <CardHeader className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
-                <CardTitle className="text-2xl font-bold text-balance">Password Updated</CardTitle>
-                <CardDescription className="text-pretty">Your password has been successfully reset</CardDescription>
+                <CardTitle className="text-2xl font-bold text-foreground">Password Updated!</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Your password has been successfully updated
+                </CardDescription>
               </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-sm text-muted-foreground">Redirecting you to sign in...</p>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Redirecting you to the login page in 2 seconds...
+                  </p>
+                  <Link href="/auth/login">
+                    <Button className="w-full">Continue to Login</Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
+
         <Footer />
       </div>
     )
   }
 
-  console.log("[v0] Rendering reset password form")
+  console.log("[v0] Rendering password reset form")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
+
       <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-md">
           <Card className="shadow-lg">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold text-balance">Set New Password</CardTitle>
-              <CardDescription className="text-pretty">Enter your new password below</CardDescription>
+            <CardHeader className="text-center space-y-2">
+              <CardTitle className="text-2xl font-bold text-foreground">Reset Your Password</CardTitle>
+              <CardDescription className="text-muted-foreground">Enter your new password below</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleResetPassword} className="space-y-4">
+              <form onSubmit={handleResetPassword} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="password">New Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter new password"
-                    required
-                    value={password}
-                    onChange={(e) => {
-                      console.log("[v0] Password field updated")
-                      setPassword(e.target.value)
-                    }}
-                    className="w-full"
-                  />
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                    New Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your new password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-11 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm new password"
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      console.log("[v0] Confirm password field updated")
-                      setConfirmPassword(e.target.value)
-                    }}
-                    className="w-full"
-                  />
-                </div>
+
                 {error && (
-                  <div className="p-3 text-sm text-destructive-foreground bg-destructive/10 border border-destructive/20 rounded-md">
-                    {error}
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Updating..." : "Update Password"}
+
+                <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90" disabled={isLoading}>
+                  {isLoading ? "Updating Password..." : "Update Password"}
                 </Button>
               </form>
             </CardContent>
           </Card>
         </div>
       </div>
+
       <Footer />
     </div>
   )

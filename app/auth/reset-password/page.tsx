@@ -11,7 +11,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Eye, EyeOff, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -19,6 +19,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
+  const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -41,6 +42,15 @@ export default function ResetPasswordPage() {
     checkSession()
   }, [])
 
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => {
+        router.push("/auth/login")
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [isSuccess, router])
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
@@ -54,17 +64,10 @@ export default function ResetPasswordPage() {
     }
 
     try {
-     const { error } = await supabase.auth.updateUser({ password })
-if (error) throw error
-setIsSuccess(true)
-setTimeout(() => {
-  router.push("/auth/login")
-}, 2000)
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) throw error
 
-
-      // Sign out after successful password reset
-      await supabase.auth.signOut()
-      router.push("/auth/login?message=Password updated successfully")
+      setIsSuccess(true)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
@@ -121,6 +124,42 @@ setTimeout(() => {
                     <Button variant="outline" className="w-full bg-transparent">
                       Back to Sign In
                     </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Footer />
+      </div>
+    )
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+          <div className="w-full max-w-md">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center space-y-2">
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <CardTitle className="text-2xl font-bold text-foreground">Password Updated!</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Your password has been successfully updated
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Redirecting you to the login page in 2 seconds...
+                  </p>
+                  <Link href="/auth/login">
+                    <Button className="w-full">Continue to Login</Button>
                   </Link>
                 </div>
               </CardContent>

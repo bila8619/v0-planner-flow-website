@@ -127,7 +127,7 @@ export default function LoginPage() {
 
               <div className="mt-4 text-center">
                 <Link
-                  href="/auth/forgot-password"
+                  href="/auth/reset"
                   className="text-sm text-primary hover:text-primary/80 underline underline-offset-4"
                 >
                   Forgot your password?

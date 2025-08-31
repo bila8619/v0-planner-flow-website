@@ -2,20 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 import {
-  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  Input,
-  Label,
-} from "@/components/ui";
-import { CheckCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { CheckCircle } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -25,7 +25,6 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Verify that a temporary Supabase session exists.  If not, show an error.
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ error }) => {
@@ -55,21 +54,17 @@ export default function ResetPasswordPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Show success message and redirect to login after 2s.
       setSuccess(true);
       setTimeout(() => {
         router.push("/auth/login");
       }, 2000);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      );
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Success state
   if (success) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -83,7 +78,7 @@ export default function ResetPasswordPage() {
                 </div>
                 <CardTitle className="text-2xl font-bold">Password Updated</CardTitle>
                 <CardDescription>
-                  Your password has been successfully reset
+                  Your password has been successfully reset.
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
@@ -99,7 +94,6 @@ export default function ResetPasswordPage() {
     );
   }
 
-  // Error state or form
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />

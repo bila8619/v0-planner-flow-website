@@ -28,38 +28,32 @@ export default function ResetPasswordPage() {
       const supabase = createClient()
       console.log("[v0] Supabase client created")
 
-      console.log("[v0] Checking URL for auth parameters...")
       const urlParams = new URLSearchParams(window.location.search)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const code = urlParams.get("code")
 
-      const accessToken = urlParams.get("access_token") || hashParams.get("access_token")
-      const refreshToken = urlParams.get("refresh_token") || hashParams.get("refresh_token")
-      const type = urlParams.get("type") || hashParams.get("type")
-
-      console.log("[v0] URL parameters:", {
-        hasAccessToken: !!accessToken,
-        hasRefreshToken: !!refreshToken,
-        type,
-      })
-
-      console.log("[v0] Setting up auth state change listener...")
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("[v0] Auth state change:", { event, hasSession: !!session })
-
-        if (event === "SIGNED_IN" && session) {
-          console.log("[v0] User signed in via auth state change")
-          setHasValidSession(true)
-        } else if (event === "SIGNED_OUT" || !session) {
-          console.log("[v0] User signed out or no session")
+      if (code) {
+        console.log("[v0] Found recovery code, exchanging for session...")
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          console.log("[v0] exchangeCodeForSession response:", { session: !!data.session, error })
+          if (data.session) {
+            console.log("[v0] Session established via exchangeCodeForSession")
+            setHasValidSession(true)
+            return
+          } else if (error) {
+            console.log("[v0] exchangeCodeForSession error:", error)
+            setHasValidSession(false)
+            return
+          }
+        } catch (error) {
+          console.log("[v0] exchangeCodeForSession failed:", error)
           setHasValidSession(false)
+          return
         }
-      })
+      }
 
+      console.log("[v0] No code parameter found, checking existing session...")
       try {
-        console.log("[v0] Calling supabase.auth.getSession()...")
-
         const {
           data: { session },
           error,
@@ -73,29 +67,17 @@ export default function ResetPasswordPage() {
             expires_at: session.expires_at,
           })
           setHasValidSession(true)
-        } else if (!accessToken) {
-          console.log("[v0] No session and no auth tokens in URL")
-          setHasValidSession(false)
         } else {
-          console.log("[v0] No current session but auth tokens present, waiting for auth state change...")
+          console.log("[v0] No session found")
+          setHasValidSession(false)
         }
       } catch (error) {
         console.log("[v0] Error during session check:", error)
         setHasValidSession(false)
       }
-
-      return () => {
-        console.log("[v0] Cleaning up auth state change subscription")
-        subscription.unsubscribe()
-      }
     }
 
-    const cleanup = checkSession()
-    return () => {
-      if (cleanup instanceof Promise) {
-        cleanup.then((cleanupFn) => cleanupFn && cleanupFn())
-      }
-    }
+    checkSession()
   }, [])
 
   useEffect(() => {
@@ -132,13 +114,7 @@ export default function ResetPasswordPage() {
     try {
       console.log("[v0] Calling supabase.auth.updateUser() with new password...")
 
-      const updatePromise = supabase.auth.updateUser({ password })
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Password update timed out after 10 seconds")), 10000),
-      )
-
-      console.log("[v0] Starting updateUser with 10-second timeout...")
-      const { error } = (await Promise.race([updatePromise, timeoutPromise])) as any
+      const { error } = await supabase.auth.updateUser({ password })
 
       console.log("[v0] updateUser completed, checking for errors...")
       if (error) {

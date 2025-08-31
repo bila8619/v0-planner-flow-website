@@ -86,6 +86,9 @@ export default function ResetPasswordPage() {
 
     try {
       console.log("[v0] Calling server-side reset password API...")
+      console.log("[v0] Request URL:", "/api/auth/reset-password")
+      console.log("[v0] Request method:", "POST")
+      console.log("[v0] Request headers:", { "Content-Type": "application/json" })
 
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
@@ -98,6 +101,11 @@ export default function ResetPasswordPage() {
           password,
         }),
       })
+
+      console.log("[v0] Fetch completed")
+      console.log("[v0] Response status:", response.status)
+      console.log("[v0] Response ok:", response.ok)
+      console.log("[v0] Response headers:", Object.fromEntries(response.headers.entries()))
 
       const data = await response.json()
 
@@ -116,6 +124,8 @@ export default function ResetPasswordPage() {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred"
       console.log("[v0] Password reset error:", errorMessage)
+      console.log("[v0] Error type:", typeof error)
+      console.log("[v0] Error object:", error)
       setError(errorMessage)
     } finally {
       setIsLoading(false)

@@ -24,24 +24,51 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      console.log("[v0] Checking for valid session after auth/confirm redirect...")
+      console.log("[v0] Checking for session using Reddit solution...")
       const supabase = createClient()
 
       try {
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession()
-        console.log("[v0] Session check result:", { hasSession: !!session, error })
+        console.log("[v0] Checking for existing session...")
+        const { data: existingSession } = await supabase.auth.getUser()
 
-        if (session) {
-          console.log("[v0] Valid session found, user can reset password")
+        if (existingSession.user) {
+          console.log("[v0] Valid existing session found")
           setHasValidSession(true)
-        } else {
-          console.log("[v0] No valid session found")
-          setHasValidSession(false)
-          setError("Invalid or expired reset link. Please request a new password reset.")
+          return
         }
+
+        console.log("[v0] No existing session, checking for code parameter...")
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get("code")
+
+        if (code) {
+          console.log("[v0] Found code parameter, exchanging for session...")
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+
+          if (exchangeError) {
+            console.log("[v0] exchangeCodeForSession error:", exchangeError)
+            setHasValidSession(false)
+            setError("Recovery code has expired. Please request a new password reset.")
+            return
+          }
+
+          console.log("[v0] Session established via exchangeCodeForSession")
+          setHasValidSession(true)
+          return
+        }
+
+        console.log("[v0] No code parameter, trying URL fragments...")
+        const { data: urlData, error: urlError } = await supabase.auth.getSessionFromUrl({ storeSession: true })
+
+        if (urlData.session && !urlError) {
+          console.log("[v0] Session established from URL fragments")
+          setHasValidSession(true)
+          return
+        }
+
+        console.log("[v0] No valid session found through any method")
+        setHasValidSession(false)
+        setError("Invalid or expired reset link. Please request a new password reset.")
       } catch (err) {
         console.log("[v0] Error checking session:", err)
         setHasValidSession(false)
@@ -93,6 +120,8 @@ export default function ResetPasswordPage() {
       }
 
       console.log("[v0] Password update successful!")
+      console.log("[v0] Signing out user after password reset...")
+      await supabase.auth.signOut()
       console.log("[v0] Setting success state to true...")
       setIsSuccess(true)
     } catch (error: unknown) {

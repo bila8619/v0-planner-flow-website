@@ -19,7 +19,38 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const checkSession = async () => {
+      console.log("[v0] Checking for valid session after auth/confirm redirect...")
+      const supabase = createClient()
+
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+        console.log("[v0] Session check result:", { hasSession: !!session, error })
+
+        if (session) {
+          console.log("[v0] Valid session found, user can reset password")
+          setHasValidSession(true)
+        } else {
+          console.log("[v0] No valid session found")
+          setHasValidSession(false)
+          setError("Invalid or expired reset link. Please request a new password reset.")
+        }
+      } catch (err) {
+        console.log("[v0] Error checking session:", err)
+        setHasValidSession(false)
+        setError("Failed to verify reset link. Please try again.")
+      }
+    }
+
+    checkSession()
+  }, [])
 
   useEffect(() => {
     if (isSuccess) {
@@ -73,6 +104,55 @@ export default function ResetPasswordPage() {
       console.log("[v0] Setting loading state to false")
       setIsLoading(false)
     }
+  }
+
+  if (hasValidSession === null) {
+    console.log("[v0] Rendering session loading state")
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+          <div className="w-full max-w-md">
+            <Card className="shadow-lg">
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <p className="text-muted-foreground">Verifying reset link...</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (hasValidSession === false) {
+    console.log("[v0] Rendering invalid session state")
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
+          <div className="w-full max-w-md">
+            <Card className="shadow-lg">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-bold text-red-600">Invalid Reset Link</CardTitle>
+                <CardDescription>The password reset link is invalid or has expired.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button asChild className="w-full">
+                  <Link href="/auth/forgot-password">Request New Reset Link</Link>
+                </Button>
+                <Button variant="outline" asChild className="w-full bg-transparent">
+                  <Link href="/auth/login">Back to Login</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
   }
 
   if (isSuccess) {

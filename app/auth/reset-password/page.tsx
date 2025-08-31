@@ -11,57 +11,43 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-import { Eye, EyeOff, CheckCircle } from "lucide-react"
+import { Eye, EyeOff, CheckCircle, Check } from "lucide-react"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    console.log("[v0] Reset password page mounted")
-    console.log("[v0] Current URL:", window.location.href)
-    console.log("[v0] URL search params:", window.location.search)
-    console.log("[v0] URL hash:", window.location.hash)
+  const passwordRequirements = [
+    { text: "At least 8 characters", met: password.length >= 8 },
+    { text: "Contains uppercase letter", met: /[A-Z]/.test(password) },
+    { text: "Contains lowercase letter", met: /[a-z]/.test(password) },
+    { text: "Contains number", met: /\d/.test(password) },
+  ]
 
+  useEffect(() => {
     const checkSession = async () => {
-      console.log("[v0] Starting session check...")
       const supabase = createClient()
-      console.log("[v0] Supabase client created")
 
       try {
-        console.log("[v0] Calling getSession()...")
         const {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession()
 
-        console.log("[v0] getSession() response:", {
-          session: session
-            ? {
-                user: !!session.user,
-                access_token: session.access_token ? `${session.access_token.substring(0, 10)}...` : null,
-                expires_at: session.expires_at,
-                token_type: session.token_type,
-              }
-            : null,
-          error: sessionError ? { message: sessionError.message } : null,
-        })
-
         if (session) {
-          console.log("[v0] Valid session found, user can reset password")
           setHasValidSession(true)
         } else {
-          console.log("[v0] No valid session found")
           setHasValidSession(false)
           setError("Invalid or expired reset link. Please request a new password reset.")
         }
       } catch (err) {
-        console.log("[v0] Session check threw error:", err)
         setHasValidSession(false)
         setError("Failed to verify reset link. Please try again.")
       }
@@ -72,9 +58,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (isSuccess) {
-      console.log("[v0] Password reset successful, setting redirect timer")
       const timer = setTimeout(() => {
-        console.log("[v0] Redirecting to login page")
         router.push("/auth/login")
       }, 2000)
       return () => {
@@ -85,39 +69,38 @@ export default function ResetPasswordPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Password reset form submitted")
-
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     if (!password.trim()) {
-      console.log("[v0] Password validation failed - empty password")
       setError("Please enter a password")
       setIsLoading(false)
       return
     }
 
-    console.log("[v0] Password validation passed, calling updateUser...")
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
+
+    if (!passwordRequirements.every((req) => req.met)) {
+      setError("Please meet all password requirements")
+      setIsLoading(false)
+      return
+    }
 
     try {
       const { error, data } = await supabase.auth.updateUser({ password })
 
-      console.log("[v0] updateUser response:", {
-        error: error ? { message: error.message, status: error.status } : null,
-        data: data ? { user: !!data.user } : null,
-      })
-
       if (error) {
-        console.log("[v0] updateUser failed:", error.message)
         throw error
       }
 
-      console.log("[v0] Password update successful!")
       setIsSuccess(true)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred"
-      console.log("[v0] Password update error:", errorMessage)
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -125,7 +108,6 @@ export default function ResetPasswordPage() {
   }
 
   if (hasValidSession === null) {
-    console.log("[v0] Rendering loading state (session check in progress)")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -146,7 +128,6 @@ export default function ResetPasswordPage() {
   }
 
   if (hasValidSession === false) {
-    console.log("[v0] Rendering invalid session state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -174,7 +155,6 @@ export default function ResetPasswordPage() {
   }
 
   if (isSuccess) {
-    console.log("[v0] Rendering success state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -210,7 +190,6 @@ export default function ResetPasswordPage() {
     )
   }
 
-  console.log("[v0] Rendering password reset form")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -244,6 +223,40 @@ export default function ResetPasswordPage() {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {password && (
+                    <div className="mt-2 space-y-1">
+                      {passwordRequirements.map((req, index) => (
+                        <div key={index} className="flex items-center space-x-2 text-xs">
+                          <Check className={`h-3 w-3 ${req.met ? "text-green-500" : "text-muted-foreground"}`} />
+                          <span className={req.met ? "text-green-600" : "text-muted-foreground"}>{req.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                    Confirm New Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your new password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="h-11 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>

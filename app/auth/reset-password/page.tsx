@@ -28,33 +28,37 @@ export default function ResetPasswordPage() {
       const supabase = createClient()
       console.log("[v0] Supabase client created")
 
-      console.log("[v0] Checking URL for PKCE code parameter...")
+      console.log("[v0] Checking URL for recovery token parameters...")
       const urlParams = new URLSearchParams(window.location.search)
-      const code = urlParams.get("code")
+      const tokenHash = urlParams.get("token_hash")
+      const type = urlParams.get("type")
 
-      if (code) {
-        console.log("[v0] Found PKCE code, exchanging for session...")
+      if (tokenHash && type === "recovery") {
+        console.log("[v0] Found recovery token, verifying with verifyOtp...")
         try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-          console.log("[v0] exchangeCodeForSession response:", { session: !!data.session, error })
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          })
+          console.log("[v0] verifyOtp response:", { session: !!data.session, error })
 
           if (data.session) {
-            console.log("[v0] Session established via exchangeCodeForSession")
+            console.log("[v0] Session established via verifyOtp")
             setHasValidSession(true)
             return
           } else if (error) {
-            console.log("[v0] exchangeCodeForSession error:", error)
+            console.log("[v0] verifyOtp error:", error)
             setHasValidSession(false)
             return
           }
         } catch (error) {
-          console.log("[v0] exchangeCodeForSession failed:", error)
+          console.log("[v0] verifyOtp failed:", error)
           setHasValidSession(false)
           return
         }
       }
 
-      console.log("[v0] No PKCE code found, checking existing session...")
+      console.log("[v0] No recovery token found, checking existing session...")
       try {
         const {
           data: { session },

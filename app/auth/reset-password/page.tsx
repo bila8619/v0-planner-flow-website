@@ -24,18 +24,35 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const checkSession = async () => {
+      console.log("[v0] Reset password page mounted, checking session...")
       const supabase = createClient()
+      console.log("[v0] Supabase client created")
+
       try {
+        console.log("[v0] Calling supabase.auth.getSession()...")
         const {
           data: { session },
           error,
         } = await supabase.auth.getSession()
+
+        console.log("[v0] getSession() response:", { session: !!session, error })
+        if (session) {
+          console.log("[v0] Session details:", {
+            user_id: session.user?.id,
+            email: session.user?.email,
+            expires_at: session.expires_at,
+          })
+        }
+
         if (error || !session) {
+          console.log("[v0] No valid session found, setting hasValidSession to false")
           setHasValidSession(false)
         } else {
+          console.log("[v0] Valid session found, setting hasValidSession to true")
           setHasValidSession(true)
         }
       } catch (error) {
+        console.log("[v0] Error during session check:", error)
         setHasValidSession(false)
       }
     }
@@ -44,38 +61,60 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (isSuccess) {
+      console.log("[v0] Password reset successful, starting 2-second redirect timer...")
       const timer = setTimeout(() => {
+        console.log("[v0] Redirecting to login page...")
         router.push("/auth/login")
       }, 2000)
-      return () => clearTimeout(timer)
+      return () => {
+        console.log("[v0] Cleanup: clearing redirect timer")
+        clearTimeout(timer)
+      }
     }
   }, [isSuccess, router])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("[v0] Password reset form submitted")
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
+    console.log("[v0] Set loading state to true, cleared error")
 
     if (!password.trim()) {
+      console.log("[v0] Password validation failed: empty password")
       setError("Please enter a password")
       setIsLoading(false)
       return
     }
 
-    try {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
+    console.log("[v0] Password validation passed, attempting to update user password...")
 
+    try {
+      console.log("[v0] Calling supabase.auth.updateUser() with new password...")
+      const { error } = await supabase.auth.updateUser({ password })
+
+      if (error) {
+        console.log("[v0] updateUser() returned error:", error)
+        throw error
+      }
+
+      console.log("[v0] Password update successful!")
+      console.log("[v0] Setting success state to true...")
       setIsSuccess(true)
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      console.log("[v0] Password update failed with error:", error)
+      const errorMessage = error instanceof Error ? error.message : "An error occurred"
+      console.log("[v0] Setting error message:", errorMessage)
+      setError(errorMessage)
     } finally {
+      console.log("[v0] Setting loading state to false")
       setIsLoading(false)
     }
   }
 
   if (hasValidSession === null) {
+    console.log("[v0] Rendering loading state (hasValidSession is null)")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -96,6 +135,7 @@ export default function ResetPasswordPage() {
   }
 
   if (!hasValidSession) {
+    console.log("[v0] Rendering invalid session state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -137,6 +177,7 @@ export default function ResetPasswordPage() {
   }
 
   if (isSuccess) {
+    console.log("[v0] Rendering success state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -172,6 +213,7 @@ export default function ResetPasswordPage() {
     )
   }
 
+  console.log("[v0] Rendering password reset form")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />

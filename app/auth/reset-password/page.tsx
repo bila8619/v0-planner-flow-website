@@ -54,8 +54,13 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
+     const { error } = await supabase.auth.updateUser({ password })
+if (error) throw error
+setIsSuccess(true)
+setTimeout(() => {
+  router.push("/auth/login")
+}, 2000)
+
 
       // Sign out after successful password reset
       await supabase.auth.signOut()

@@ -24,53 +24,20 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      console.log("[v0] Checking for session using Reddit solution...")
       const supabase = createClient()
 
       try {
-        console.log("[v0] Checking for existing session...")
-        const { data: existingSession } = await supabase.auth.getUser()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
 
-        if (existingSession.user) {
-          console.log("[v0] Valid existing session found")
+        if (session) {
           setHasValidSession(true)
-          return
+        } else {
+          setHasValidSession(false)
+          setError("Invalid or expired reset link. Please request a new password reset.")
         }
-
-        console.log("[v0] No existing session, checking for code parameter...")
-        const urlParams = new URLSearchParams(window.location.search)
-        const code = urlParams.get("code")
-
-        if (code) {
-          console.log("[v0] Found code parameter, exchanging for session...")
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-
-          if (exchangeError) {
-            console.log("[v0] exchangeCodeForSession error:", exchangeError)
-            setHasValidSession(false)
-            setError("Recovery code has expired. Please request a new password reset.")
-            return
-          }
-
-          console.log("[v0] Session established via exchangeCodeForSession")
-          setHasValidSession(true)
-          return
-        }
-
-        console.log("[v0] No code parameter, trying URL fragments...")
-        const { data: urlData, error: urlError } = await supabase.auth.getSessionFromUrl({ storeSession: true })
-
-        if (urlData.session && !urlError) {
-          console.log("[v0] Session established from URL fragments")
-          setHasValidSession(true)
-          return
-        }
-
-        console.log("[v0] No valid session found through any method")
-        setHasValidSession(false)
-        setError("Invalid or expired reset link. Please request a new password reset.")
       } catch (err) {
-        console.log("[v0] Error checking session:", err)
         setHasValidSession(false)
         setError("Failed to verify reset link. Please try again.")
       }
@@ -81,13 +48,10 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (isSuccess) {
-      console.log("[v0] Password reset successful, starting 2-second redirect timer...")
       const timer = setTimeout(() => {
-        console.log("[v0] Redirecting to login page...")
         router.push("/auth/login")
       }, 2000)
       return () => {
-        console.log("[v0] Cleanup: clearing redirect timer")
         clearTimeout(timer)
       }
     }
@@ -95,48 +59,33 @@ export default function ResetPasswordPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Password reset form submitted")
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
-    console.log("[v0] Set loading state to true, cleared error")
 
     if (!password.trim()) {
-      console.log("[v0] Password validation failed: empty password")
       setError("Please enter a password")
       setIsLoading(false)
       return
     }
 
-    console.log("[v0] Password validation passed, attempting to update user password...")
-
     try {
-      console.log("[v0] Calling supabase.auth.updateUser() with new password...")
       const { error } = await supabase.auth.updateUser({ password })
 
       if (error) {
-        console.log("[v0] updateUser() returned error:", error)
         throw error
       }
 
-      console.log("[v0] Password update successful!")
-      console.log("[v0] Signing out user after password reset...")
-      await supabase.auth.signOut()
-      console.log("[v0] Setting success state to true...")
       setIsSuccess(true)
     } catch (error: unknown) {
-      console.log("[v0] Password update failed with error:", error)
       const errorMessage = error instanceof Error ? error.message : "An error occurred"
-      console.log("[v0] Setting error message:", errorMessage)
       setError(errorMessage)
     } finally {
-      console.log("[v0] Setting loading state to false")
       setIsLoading(false)
     }
   }
 
   if (hasValidSession === null) {
-    console.log("[v0] Rendering session loading state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -157,7 +106,6 @@ export default function ResetPasswordPage() {
   }
 
   if (hasValidSession === false) {
-    console.log("[v0] Rendering invalid session state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -185,7 +133,6 @@ export default function ResetPasswordPage() {
   }
 
   if (isSuccess) {
-    console.log("[v0] Rendering success state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -221,7 +168,6 @@ export default function ResetPasswordPage() {
     )
   }
 
-  console.log("[v0] Rendering password reset form")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />

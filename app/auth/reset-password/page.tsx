@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Eye, EyeOff, CheckCircle } from "lucide-react"
 
@@ -19,56 +18,39 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [hasValidSession, setHasValidSession] = useState<boolean | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const [tokenHash, setTokenHash] = useState<string | null>(null)
+  const [tokenType, setTokenType] = useState<string | null>(null)
 
   useEffect(() => {
     console.log("[v0] Reset password page mounted")
     console.log("[v0] Current URL:", window.location.href)
-    console.log("[v0] URL search params:", window.location.search)
-    console.log("[v0] URL hash:", window.location.hash)
 
-    const checkSession = async () => {
-      console.log("[v0] Starting session check...")
-      const supabase = createClient()
-      console.log("[v0] Supabase client created")
+    const token_hash = searchParams.get("token_hash")
+    const type = searchParams.get("type")
 
-      try {
-        console.log("[v0] Calling getSession()...")
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession()
+    console.log("[v0] Extracted parameters:", {
+      token_hash: token_hash ? `${token_hash.substring(0, 10)}...` : null,
+      type,
+    })
 
-        console.log("[v0] getSession() response:", {
-          session: session
-            ? {
-                user: !!session.user,
-                access_token: session.access_token ? `${session.access_token.substring(0, 10)}...` : null,
-                expires_at: session.expires_at,
-                token_type: session.token_type,
-              }
-            : null,
-          error: sessionError ? { message: sessionError.message } : null,
-        })
-
-        if (session) {
-          console.log("[v0] Valid session found, user can reset password")
-          setHasValidSession(true)
-        } else {
-          console.log("[v0] No valid session found")
-          setHasValidSession(false)
-          setError("Invalid or expired reset link. Please request a new password reset.")
-        }
-      } catch (err) {
-        console.log("[v0] Session check threw error:", err)
-        setHasValidSession(false)
-        setError("Failed to verify reset link. Please try again.")
-      }
+    if (!token_hash || !type) {
+      console.log("[v0] Missing required URL parameters")
+      setError("Invalid reset link. Missing required parameters.")
+      return
     }
 
-    checkSession()
-  }, [])
+    if (type !== "recovery") {
+      console.log("[v0] Invalid token type")
+      setError("Invalid reset link. Incorrect token type.")
+      return
+    }
+
+    setTokenHash(token_hash)
+    setTokenType(type)
+  }, [searchParams])
 
   useEffect(() => {
     if (isSuccess) {
@@ -87,66 +69,61 @@ export default function ResetPasswordPage() {
     e.preventDefault()
     console.log("[v0] Password reset form submitted")
 
-    const supabase = createClient()
-    setIsLoading(true)
-    setError(null)
-
     if (!password.trim()) {
       console.log("[v0] Password validation failed - empty password")
       setError("Please enter a password")
-      setIsLoading(false)
       return
     }
 
-    console.log("[v0] Password validation passed, calling updateUser...")
+    if (!tokenHash || !tokenType) {
+      console.log("[v0] Missing token parameters")
+      setError("Invalid reset link. Please request a new password reset.")
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
 
     try {
-      const { error, data } = await supabase.auth.updateUser({ password })
+      console.log("[v0] Calling server-side reset password API...")
 
-      console.log("[v0] updateUser response:", {
-        error: error ? { message: error.message, status: error.status } : null,
-        data: data ? { user: !!data.user } : null,
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token_hash: tokenHash,
+          type: tokenType,
+          password,
+        }),
       })
 
-      if (error) {
-        console.log("[v0] updateUser failed:", error.message)
-        throw error
+      const data = await response.json()
+
+      console.log("[v0] Server API response:", {
+        status: response.status,
+        success: data.success,
+        error: data.error,
+      })
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to reset password")
       }
 
-      console.log("[v0] Password update successful!")
+      console.log("[v0] Password reset successful!")
       setIsSuccess(true)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred"
-      console.log("[v0] Password update error:", errorMessage)
+      console.log("[v0] Password reset error:", errorMessage)
       setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (hasValidSession === null) {
-    console.log("[v0] Rendering loading state (session check in progress)")
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <Header />
-        <div className="flex-1 flex items-center justify-center p-6 md:p-10">
-          <div className="w-full max-w-md">
-            <Card className="shadow-lg">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-muted-foreground">Verifying reset link...</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  if (hasValidSession === false) {
-    console.log("[v0] Rendering invalid session state")
+  if (!tokenHash || !tokenType) {
+    console.log("[v0] Rendering invalid token state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -155,7 +132,7 @@ export default function ResetPasswordPage() {
             <Card className="shadow-lg">
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-bold text-red-600">Invalid Reset Link</CardTitle>
-                <CardDescription>The password reset link is invalid or has expired.</CardDescription>
+                <CardDescription>The password reset link is invalid or malformed.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button asChild className="w-full">
@@ -178,7 +155,6 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
-
         <div className="flex-1 flex items-center justify-center p-6 md:p-10">
           <div className="w-full max-w-md">
             <Card className="shadow-lg">
@@ -204,7 +180,6 @@ export default function ResetPasswordPage() {
             </Card>
           </div>
         </div>
-
         <Footer />
       </div>
     )
@@ -214,7 +189,6 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-
       <div className="flex-1 flex items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-md">
           <Card className="shadow-lg">
@@ -262,7 +236,6 @@ export default function ResetPasswordPage() {
           </Card>
         </div>
       </div>
-
       <Footer />
     </div>
   )

@@ -131,8 +131,16 @@ export default function ResetPasswordPage() {
 
     try {
       console.log("[v0] Calling supabase.auth.updateUser() with new password...")
-      const { error } = await supabase.auth.updateUser({ password })
 
+      const updatePromise = supabase.auth.updateUser({ password })
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Password update timed out after 10 seconds")), 10000),
+      )
+
+      console.log("[v0] Starting updateUser with 10-second timeout...")
+      const { error } = (await Promise.race([updatePromise, timeoutPromise])) as any
+
+      console.log("[v0] updateUser completed, checking for errors...")
       if (error) {
         console.log("[v0] updateUser() returned error:", error)
         throw error

@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getInitialData = async () => {
       try {
         const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Session timeout")), 8000))
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Session timeout")), 15000))
 
         const {
           data: { session },
@@ -75,7 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (sessionError) {
           console.error("Session error:", sessionError)
-          throw sessionError
+          setUser(null)
+          setUserProfile(null)
+          setLoading(false)
+          return
         }
 
         if (session?.user) {
@@ -88,6 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error("Error fetching initial auth data:", error)
+        if (error instanceof Error && error.message === "Session timeout") {
+          console.warn("Session check timed out, but user might still be authenticated")
+        }
         setUser(null)
         setUserProfile(null)
       } finally {
@@ -99,6 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const authStateChange = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
+        if (event === "TOKEN_REFRESHED" && session?.user) {
+          console.log("Token refreshed successfully")
+          setUser(session.user)
+          return
+        }
+
         if (session?.user) {
           setUser(session.user)
           const profile = await fetchProfile(session.user.id)

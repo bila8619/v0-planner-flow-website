@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Lock, CheckCircle, Star, Users, ClipboardCheck } from "lucide-react"
+import { Lock, CheckCircle, Star, Users, ClipboardCheck, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { getUserProfile, getTemplateAccess, PLAN_TEMPLATE_LIMITS, type UserProfile } from "@/lib/supabase/auth"
@@ -107,11 +107,11 @@ export function DashboardClient() {
     return (
       <>
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-pulse">
-              <div className="h-8 bg-muted rounded w-48 mx-auto mb-4"></div>
-              <div className="h-4 bg-muted rounded w-32 mx-auto"></div>
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-pulse space-y-3">
+              <div className="h-8 bg-muted rounded-lg w-48 mx-auto"></div>
+              <div className="h-4 bg-muted rounded-lg w-32 mx-auto"></div>
             </div>
           </div>
         </div>
@@ -124,12 +124,16 @@ export function DashboardClient() {
     return (
       <>
         <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-4">Please Sign In</h1>
-            <p className="text-muted-foreground mb-6">You need to be signed in to access your dashboard.</p>
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-6 max-w-md mx-auto px-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-foreground">Please Sign In</h1>
+              <p className="text-muted-foreground text-lg">You need to be signed in to access your dashboard.</p>
+            </div>
             <Link href="/auth/login">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Sign In</Button>
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
+                Sign In
+              </Button>
             </Link>
           </div>
         </div>
@@ -143,34 +147,38 @@ export function DashboardClient() {
   return (
     <>
       <Header />
-      <div className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back, {user.email}!</h1>
-          <p className="text-muted-foreground">Here's your planning dashboard overview</p>
+      <div className="flex-1 container mx-auto px-4 py-6 md:py-8 max-w-7xl">
+        <div className="mb-8 md:mb-12">
+          <div className="space-y-2">
+            <h1 className="text-2xl md:text-4xl font-bold text-foreground text-balance">
+              Welcome back, {user.email?.split("@")[0]}!
+            </h1>
+            <p className="text-muted-foreground text-lg md:text-xl">Here's your planning dashboard overview</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg md:text-xl flex items-center justify-between">
                 Current Plan
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={refreshProfile}
-                  className="h-6 w-6 p-0"
+                  className="h-8 w-8 p-0 hover:bg-muted rounded-full"
                   title="Refresh subscription status"
                 >
-                  🔄
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <Badge className={`${currentPlan.color} text-white mb-2`}>{currentPlan.name}</Badge>
-              <p className="text-sm text-muted-foreground">{currentPlan.description}</p>
+            <CardContent className="space-y-4">
+              <Badge className={`${currentPlan.color} text-white text-sm px-3 py-1`}>{currentPlan.name}</Badge>
+              <p className="text-sm text-muted-foreground leading-relaxed">{currentPlan.description}</p>
               {userProfile.subscription_plan !== "family" && (
-                <Link href="/pricing" className="block mt-3">
-                  <Button size="sm" variant="outline" className="w-full bg-transparent">
+                <Link href="/pricing" className="block">
+                  <Button size="sm" variant="outline" className="w-full bg-transparent hover:bg-muted">
                     {userProfile.subscription_plan === "free" ? "Upgrade Plan" : "View Higher Plans"}
                   </Button>
                 </Link>
@@ -178,35 +186,45 @@ export function DashboardClient() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Template Access</CardTitle>
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg md:text-xl">Template Access</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-foreground mb-2">
-                {accessibleTemplates} / {templateStats.totalTemplates}
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-2xl md:text-3xl font-bold text-foreground">
+                  {accessibleTemplates}{" "}
+                  <span className="text-lg text-muted-foreground">/ {templateStats.totalTemplates}</span>
+                </div>
+                <Progress value={progressPercentage} className="h-2" />
+                <p className="text-sm text-muted-foreground">Templates available</p>
               </div>
-              <Progress value={progressPercentage} className="mb-2" />
-              <p className="text-sm text-muted-foreground">Templates available</p>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Account Status</CardTitle>
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg md:text-xl">Account Status</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-medium capitalize">{userProfile.subscription_status}</span>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </div>
+                <div>
+                  <span className="text-sm font-medium capitalize block">{userProfile.subscription_status}</span>
+                  <p className="text-xs text-muted-foreground">Account in good standing</p>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">Account in good standing</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-foreground">Your Template Access</h2>
+        <div className="space-y-8 md:space-y-12">
+          <div className="space-y-2">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground">Your Template Access</h2>
+            <p className="text-muted-foreground">Explore and use templates based on your current plan</p>
+          </div>
 
           {Object.entries(templateCategories).map(([categoryKey, category]) => {
             const categoryIcon =
@@ -214,18 +232,20 @@ export function DashboardClient() {
             const IconComponent = categoryIcon
 
             return (
-              <Card key={categoryKey}>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <IconComponent className="h-6 w-6 text-primary" />
-                    <div>
-                      <CardTitle className="text-xl">{category.name}</CardTitle>
-                      <CardDescription>{category.description}</CardDescription>
+              <Card key={categoryKey} className="border-0 shadow-sm">
+                <CardHeader className="pb-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <CardTitle className="text-xl md:text-2xl">{category.name}</CardTitle>
+                      <CardDescription className="text-base leading-relaxed">{category.description}</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {category.templates.map((template, index) => {
                       const globalIndex =
                         Object.entries(templateCategories)
@@ -237,29 +257,41 @@ export function DashboardClient() {
                       return (
                         <div key={template.id} className="relative">
                           <Card
-                            className={`transition-all duration-200 ${isAccessible ? "hover:shadow-md cursor-pointer" : "opacity-60"}`}
+                            className={`transition-all duration-200 border-0 ${
+                              isAccessible
+                                ? "hover:shadow-md cursor-pointer bg-background hover:bg-muted/30"
+                                : "opacity-60 bg-muted/20"
+                            }`}
                           >
-                            <CardContent className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg">{template.emoji}</span>
-                                  <h3 className="font-medium text-sm">{template.name}</h3>
+                            <CardContent className="p-4 space-y-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <span className="text-xl flex-shrink-0">{template.emoji}</span>
+                                  <h3 className="font-medium text-sm leading-tight truncate">{template.name}</h3>
                                 </div>
-                                {isAccessible ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                ) : (
-                                  <Lock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                )}
+                                <div className="flex-shrink-0 ml-2">
+                                  {isAccessible ? (
+                                    <div className="p-1 bg-green-100 rounded-full">
+                                      <CheckCircle className="h-3 w-3 text-green-600" />
+                                    </div>
+                                  ) : (
+                                    <div className="p-1 bg-muted rounded-full">
+                                      <Lock className="h-3 w-3 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-xs text-muted-foreground mb-3">{template.description}</p>
+                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                                {template.description}
+                              </p>
                               {isAccessible ? (
                                 <Link href={`/templates/${template.id}`}>
-                                  <Button size="sm" className="w-full">
+                                  <Button size="sm" className="w-full text-xs">
                                     Open Template
                                   </Button>
                                 </Link>
                               ) : (
-                                <Button size="sm" variant="outline" className="w-full bg-transparent" disabled>
+                                <Button size="sm" variant="outline" className="w-full text-xs bg-transparent" disabled>
                                   Requires Upgrade
                                 </Button>
                               )}
@@ -275,13 +307,15 @@ export function DashboardClient() {
           })}
         </div>
 
-        <Card className="mt-8 border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Star className="h-5 w-5 text-primary" />
+        <Card className="mt-8 md:mt-12 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 shadow-sm">
+          <CardHeader className="pb-6">
+            <CardTitle className="text-xl md:text-2xl flex items-center gap-3">
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Star className="h-5 w-5 text-primary" />
+              </div>
               {userProfile.subscription_plan === "free" ? "Unlock More Templates" : "Upgrade Your Plan"}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base leading-relaxed">
               {userProfile.subscription_plan === "free"
                 ? `You're currently on the Free plan with access to ${userLimit} templates. Upgrade to access all ${templateStats.totalTemplates} premium planning templates.`
                 : userProfile.subscription_plan === "family"
@@ -289,10 +323,10 @@ export function DashboardClient() {
                   : `You're on the ${currentPlan.name} with access to ${userLimit} templates. Upgrade to unlock even more features and templates.`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
+          <CardContent className="space-y-6">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Link href="/pricing">
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
                   {userProfile.subscription_plan === "free"
                     ? "View Pricing Plans"
                     : userProfile.subscription_plan === "family"
@@ -302,18 +336,32 @@ export function DashboardClient() {
               </Link>
               {userProfile.subscription_plan !== "free" && userProfile.subscription_plan !== "family" && (
                 <Link href="/templates">
-                  <Button variant="outline">Browse All Templates</Button>
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
+                    Browse All Templates
+                  </Button>
                 </Link>
               )}
             </div>
             {userProfile.subscription_plan === "free" && (
-              <div className="mt-4 p-4 bg-background rounded-lg border">
-                <h4 className="font-medium text-sm mb-2">Popular Upgrade Benefits:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Access to all {templateStats.totalTemplates} premium templates</li>
-                  <li>• Advanced planning methodologies</li>
-                  <li>• Priority customer support</li>
-                  <li>• Regular template updates</li>
+              <div className="p-4 md:p-6 bg-background/80 rounded-xl border border-primary/10">
+                <h4 className="font-semibold text-base mb-3">Popular Upgrade Benefits:</h4>
+                <ul className="text-sm text-muted-foreground space-y-2 leading-relaxed">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Access to all {templateStats.totalTemplates} premium templates
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Advanced planning methodologies
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Priority customer support
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    Regular template updates
+                  </li>
                 </ul>
               </div>
             )}

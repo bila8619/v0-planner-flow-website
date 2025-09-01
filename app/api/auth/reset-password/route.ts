@@ -88,6 +88,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 400, headers: corsHeaders })
     }
 
+    console.log("[v0] Server: Signing out user after password reset...")
+    const { error: signOutError } = await supabase.auth.signOut()
+
+    if (signOutError) {
+      console.log("[v0] Server: Sign out warning:", signOutError.message)
+      // Don't fail the request if sign out fails, password was still updated
+    } else {
+      console.log("[v0] Server: User signed out successfully")
+    }
+
     console.log("[v0] Server: Password reset successful")
     return NextResponse.json({ success: true }, { headers: corsHeaders })
   } catch (error) {

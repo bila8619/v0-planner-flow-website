@@ -95,11 +95,16 @@ export function DashboardClient() {
   const refreshProfile = async () => {
     if (user) {
       setLoading(true)
-      const profile = await getUserProfile(user, true)
-      setUserProfile(profile)
-      setRefreshTrigger((prev) => prev + 1)
-      setLoading(false)
-      console.log("[v0] Manual profile refresh:", profile?.subscription_plan)
+      try {
+        const profile = await getUserProfile(user, true)
+        setUserProfile(profile)
+        setRefreshTrigger((prev) => prev + 1)
+        console.log("[v0] Manual profile refresh:", profile?.subscription_plan)
+      } catch (error) {
+        console.error("[v0] Profile refresh error:", error)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -108,10 +113,44 @@ export function DashboardClient() {
       <>
         <Header />
         <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-4">
-            <div className="animate-pulse space-y-3">
-              <div className="h-8 bg-muted rounded-lg w-48 mx-auto"></div>
-              <div className="h-4 bg-muted rounded-lg w-32 mx-auto"></div>
+          <div className="text-center space-y-8 max-w-md mx-auto px-4">
+            <div className="relative">
+              {/* Animated template icons */}
+              <div className="flex justify-center items-center space-x-4 mb-8">
+                <div className="animate-bounce delay-0">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <ClipboardCheck className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+                <div className="animate-bounce delay-150">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Star className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+                <div className="animate-bounce delay-300">
+                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Users className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading spinner */}
+              <div className="relative mx-auto w-16 h-16 mb-6">
+                <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-foreground">Loading Dashboard</h2>
+              <p className="text-muted-foreground">Preparing your planning templates...</p>
+            </div>
+
+            {/* Animated dots */}
+            <div className="flex justify-center space-x-1">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-75"></div>
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-150"></div>
             </div>
           </div>
         </div>

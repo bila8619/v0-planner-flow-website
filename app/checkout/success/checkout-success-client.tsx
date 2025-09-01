@@ -69,8 +69,6 @@ export function CheckoutSuccessClient() {
 
   const updateSubscriptionManually = async (sessionId: string) => {
     try {
-      console.log("[v0] Manually updating subscription for session:", sessionId)
-
       const response = await fetch("/api/stripe/update-subscription", {
         method: "POST",
         headers: {

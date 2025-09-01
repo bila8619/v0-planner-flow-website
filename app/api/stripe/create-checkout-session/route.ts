@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { stripe, isStripeConfigured } from "@/lib/stripe"
+import { stripe, isStripeConfigured, priceToPlan } from "@/lib/stripe"
 import { createServerClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
@@ -90,8 +90,11 @@ export async function POST(request: NextRequest) {
       console.log("[v0] Using existing Stripe customer:", customerId)
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://v0-planner-flow-website-overview-one.vercel.app"
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plannerflow.shop"
     console.log("[v0] Site URL:", siteUrl)
+
+    const planName = priceToPlan[priceId] || "essential"
+    const billingCycle = priceId.includes("yearly") ? "yearly" : "monthly"
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -108,6 +111,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         supabase_user_id: user.id,
         price_id: priceId,
+        plan_name: planName,
+        billing_cycle: billingCycle,
       },
     })
 

@@ -38,8 +38,9 @@ begin
     'email', user_email,
     'customer_id', customer_id,
     'price_id', price_id,
-    'success_url', coalesce(success_url, 'http://localhost:3000/checkout/success'),
-    'cancel_url', coalesce(cancel_url, 'http://localhost:3000/pricing')
+    -- Updated hardcoded URLs to use plannerflow.shop domain
+    'success_url', coalesce(success_url, 'https://plannerflow.shop/checkout/success'),
+    'cancel_url', coalesce(cancel_url, 'https://plannerflow.shop/pricing')
   );
 end;
 $$;

@@ -9,16 +9,13 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Lock, CheckCircle, Star, Users, ClipboardCheck, RefreshCw } from "lucide-react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
-import { getUserProfile, getTemplateAccess, PLAN_TEMPLATE_LIMITS, type UserProfile } from "@/lib/supabase/auth"
+import { useAuth } from "@/components/auth-provider"
+import { getTemplateAccess, PLAN_TEMPLATE_LIMITS } from "@/lib/supabase/auth"
 import { templateCategories } from "@/lib/template-data"
-import type { User } from "@supabase/supabase-js"
 
 export function DashboardClient() {
-  const [user, setUser] = useState<User | null>(null)
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const { user, userProfile, loading: authLoading, refreshProfile } = useAuth()
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
 
   const templateStats = useMemo(() => {
     const totalTemplates = Object.values(templateCategories).reduce(
@@ -52,63 +49,51 @@ export function DashboardClient() {
   }, [userProfile, templateStats.totalTemplates])
 
   useEffect(() => {
-    const supabase = createClient()
-
-    const getInitialData = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (user) {
-          setUser(user)
-          const profile = await getUserProfile(user, true)
-          setUserProfile(profile)
-          console.log("[v0] Dashboard loaded with profile:", profile?.subscription_plan)
-        }
-      } catch (error) {
-        console.error("[v0] Dashboard loading error:", error)
-      } finally {
-        setLoading(false)
+    const timeout = setTimeout(() => {
+      if (authLoading) {
+        setLoadingTimeout(true)
       }
+    }, 10000) // 10 second timeout
+
+    return () => clearTimeout(timeout)
+  }, [authLoading])
+
+  useEffect(() => {
+    if (!authLoading) {
+      setLoadingTimeout(false)
     }
+  }, [authLoading])
 
-    getInitialData()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser(session.user)
-        const profile = await getUserProfile(session.user, true)
-        setUserProfile(profile)
-        console.log("[v0] Auth state change - profile updated:", profile?.subscription_plan)
-      } else {
-        setUser(null)
-        setUserProfile(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [refreshTrigger]) // Added refreshTrigger dependency to force re-fetch
-
-  const refreshProfile = async () => {
-    if (user) {
-      setLoading(true)
-      try {
-        const profile = await getUserProfile(user, true)
-        setUserProfile(profile)
-        setRefreshTrigger((prev) => prev + 1)
-        console.log("[v0] Manual profile refresh:", profile?.subscription_plan)
-      } catch (error) {
-        console.error("[v0] Profile refresh error:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
+  if (loadingTimeout) {
+    return (
+      <>
+        <Header />
+        <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-6 max-w-md mx-auto px-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-foreground">Loading Taking Too Long?</h1>
+              <p className="text-muted-foreground text-lg">
+                There might be a connection issue. Try refreshing the page.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={() => window.location.reload()} size="lg" className="bg-primary hover:bg-primary/90">
+                Refresh Page
+              </Button>
+              <Link href="/auth/login">
+                <Button variant="outline" size="lg">
+                  Sign In Again
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    )
   }
 
-  if (loading) {
+  if (authLoading) {
     return (
       <>
         <Header />

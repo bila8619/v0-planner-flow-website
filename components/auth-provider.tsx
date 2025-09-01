@@ -65,10 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const getInitialData = async () => {
       try {
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Session timeout")), 8000))
+
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession()
+        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
 
         if (sessionError) {
           console.error("Session error:", sessionError)
@@ -95,15 +98,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getInitialData()
 
     const authStateChange = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser(session.user)
-        const profile = await fetchProfile(session.user.id)
-        setUserProfile(profile)
-      } else {
-        setUser(null)
-        setUserProfile(null)
+      try {
+        if (session?.user) {
+          setUser(session.user)
+          const profile = await fetchProfile(session.user.id)
+          setUserProfile(profile)
+        } else {
+          setUser(null)
+          setUserProfile(null)
+        }
+      } catch (error) {
+        console.error("Auth state change error:", error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     return () => {

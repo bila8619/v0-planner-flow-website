@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback, memo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,107 +10,192 @@ import { Lock } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 
-export function TemplatesSection() {
+const FILTER_OPTIONS = [
+  { id: "all", label: "All Templates", count: 45 },
+  { id: "demographic", label: "Demographic", count: 15 },
+  { id: "methodology", label: "Methodology", count: 15 },
+  { id: "premium", label: "Premium Bonus", count: 15 },
+] as const
+
+const IconComponents = {
+  users: memo(() => (
+    <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 012.83-2.917m4.34 0A6.977 6.977 0 0112 16a6.977 6.977 0 012.83.917m0 0c1.563.217 3.037.672 4.17 1.083m-4.17-1.083v2m4.17-1.083c.27.06.54.127.83.2"
+      />
+    </svg>
+  )),
+  "clipboard-check": memo(() => (
+    <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      />
+    </svg>
+  )),
+  star: memo(() => (
+    <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+      />
+    </svg>
+  )),
+}
+
+const LoadingSkeleton = memo(() => (
+  <section className="py-20">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-16">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-64 mx-auto"></div>
+          <div className="h-4 bg-muted rounded w-96 mx-auto"></div>
+        </div>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <div className="h-8 w-8 bg-muted rounded"></div>
+                  <div className="h-5 bg-muted rounded w-32"></div>
+                </div>
+                <div className="h-5 bg-muted rounded w-16"></div>
+              </div>
+              <div className="h-4 bg-muted rounded w-full"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-24"></div>
+                <div className="space-y-1">
+                  <div className="h-3 bg-muted rounded w-full"></div>
+                  <div className="h-3 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-5/6"></div>
+                </div>
+                <div className="h-9 bg-muted rounded w-full mt-4"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </section>
+))
+
+const TemplateCard = memo(function TemplateCard({
+  template,
+  globalIndex,
+  userPlan,
+  user,
+}: {
+  template: any
+  globalIndex: number
+  userPlan: string
+  user: any
+}) {
+  const hasAccess = useMemo(() => getTemplateAccess(userPlan, globalIndex), [userPlan, globalIndex])
+  const isLocked = !hasAccess
+
+  return (
+    <Card
+      className={`border-border bg-card transition-all duration-200 group hover:shadow-lg cursor-pointer relative ${
+        isLocked ? "opacity-75" : ""
+      }`}
+    >
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col items-start gap-2">
+            <div className="text-3xl">{template.emoji}</div>
+            <CardTitle className="text-lg group-hover:text-primary transition-colors text-card-foreground flex items-center gap-2">
+              {template.name}
+              {isLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
+            </CardTitle>
+          </div>
+          <Badge
+            variant="secondary"
+            className={`text-xs ${hasAccess ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}
+          >
+            {hasAccess ? "Available" : "Locked"}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">{template.description}</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-card-foreground">Key Features:</h4>
+          <ul className="space-y-1">
+            {template.features.map((feature: string, featureIndex: number) => (
+              <li key={featureIndex} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                {feature}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {hasAccess ? (
+          <Link href={`/templates/${template.id}`}>
+            <Button
+              variant="outline"
+              className="w-full hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent cursor-pointer"
+            >
+              Try Template
+            </Button>
+          </Link>
+        ) : (
+          <Link href={user ? "/pricing" : "/auth/login"}>
+            <Button
+              variant="outline"
+              className="w-full hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent cursor-pointer"
+            >
+              {user ? "Upgrade" : "Sign In to Access"}
+            </Button>
+          </Link>
+        )}
+      </CardContent>
+    </Card>
+  )
+})
+
+export const TemplatesSection = memo(function TemplatesSection() {
   const [activeFilter, setActiveFilter] = useState<string>("all")
   const { user, userProfile, loading } = useAuth()
 
-  const filterOptions = [
-    { id: "all", label: "All Templates", count: 45 },
-    { id: "demographic", label: "Demographic", count: 15 },
-    { id: "methodology", label: "Methodology", count: 15 },
-    { id: "premium", label: "Premium Bonus", count: 15 },
-  ]
-
-  const filteredCategories =
-    activeFilter === "all"
+  const filteredCategories = useMemo(() => {
+    return activeFilter === "all"
       ? templateCategories
       : { [activeFilter]: templateCategories[activeFilter as keyof typeof templateCategories] }
+  }, [activeFilter])
 
-  const getGlobalTemplateIndex = (categoryKey: string, templateIndex: number): number => {
+  const getGlobalTemplateIndex = useCallback((categoryKey: string, templateIndex: number): number => {
     return (
       Object.entries(templateCategories)
         .slice(0, Object.keys(templateCategories).indexOf(categoryKey))
         .reduce((acc, [, cat]) => acc + cat.templates.length, 0) + templateIndex
     )
-  }
+  }, [])
 
-  const getIcon = (iconName: string) => {
-    const iconClass = "w-8 h-8 text-primary"
-    const strokeProps = { strokeLinecap: "round" as const, strokeLinejoin: "round" as const, strokeWidth: 2 }
+  const getIcon = useCallback((iconName: string) => {
+    const IconComponent = IconComponents[iconName as keyof typeof IconComponents]
+    return IconComponent ? <IconComponent /> : null
+  }, [])
 
-    switch (iconName) {
-      case "users":
-        return (
-          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              {...strokeProps}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 002-2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"
-            />
-          </svg>
-        )
-      case "clipboard-check":
-        return (
-          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              {...strokeProps}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-            />
-          </svg>
-        )
-      case "star":
-        return (
-          <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              {...strokeProps}
-              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-            />
-          </svg>
-        )
-      default:
-        return null
-    }
-  }
+  const userPlan = useMemo(() => userProfile?.subscription_plan || "free", [userProfile?.subscription_plan])
+
+  const handleFilterChange = useCallback((filterId: string) => {
+    setActiveFilter(filterId)
+  }, [])
 
   if (loading) {
-    return (
-      <section className="py-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-muted rounded w-64 mx-auto"></div>
-              <div className="h-4 bg-muted rounded w-96 mx-auto"></div>
-            </div>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="h-8 w-8 bg-muted rounded"></div>
-                      <div className="h-5 bg-muted rounded w-32"></div>
-                    </div>
-                    <div className="h-5 bg-muted rounded w-16"></div>
-                  </div>
-                  <div className="h-4 bg-muted rounded w-full"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-4 bg-muted rounded w-24"></div>
-                    <div className="space-y-1">
-                      <div className="h-3 bg-muted rounded w-full"></div>
-                      <div className="h-3 bg-muted rounded w-3/4"></div>
-                      <div className="h-3 bg-muted rounded w-5/6"></div>
-                    </div>
-                    <div className="h-9 bg-muted rounded w-full mt-4"></div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-    )
+    return <LoadingSkeleton />
   }
 
   return (
@@ -125,10 +210,10 @@ export function TemplatesSection() {
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 mb-12">
-          {filterOptions.map((option) => (
+          {FILTER_OPTIONS.map((option) => (
             <Button
               key={option.id}
-              onClick={() => setActiveFilter(option.id)}
+              onClick={() => handleFilterChange(option.id)}
               variant={activeFilter === option.id ? "default" : "outline"}
               className={`transition-all duration-200 ${
                 activeFilter === option.id
@@ -165,73 +250,17 @@ export function TemplatesSection() {
             )}
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {category.templates.map((template, index) => {
+              {category.templates.map((template: any, index: number) => {
                 const globalIndex = getGlobalTemplateIndex(key, index)
-                const userPlan = userProfile?.subscription_plan || "free"
-                const hasAccess = getTemplateAccess(userPlan, globalIndex)
-                const isLocked = !hasAccess
 
                 return (
-                  <Card
+                  <TemplateCard
                     key={template.id}
-                    className={`border-border bg-card transition-all duration-200 group hover:shadow-lg cursor-pointer relative ${
-                      isLocked ? "opacity-75" : ""
-                    }`}
-                  >
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex flex-col items-start gap-2">
-                          <div className="text-3xl">{template.emoji}</div>
-                          <CardTitle className="text-lg group-hover:text-primary transition-colors text-card-foreground flex items-center gap-2">
-                            {template.name}
-                            {isLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
-                          </CardTitle>
-                        </div>
-                        <Badge
-                          variant="secondary"
-                          className={`text-xs ${
-                            hasAccess ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
-                          }`}
-                        >
-                          {hasAccess ? "Available" : "Locked"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{template.description}</p>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-card-foreground">Key Features:</h4>
-                        <ul className="space-y-1">
-                          {template.features.map((feature, featureIndex) => (
-                            <li key={featureIndex} className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
-                              {feature}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {hasAccess ? (
-                        <Link href={`/templates/${template.id}`}>
-                          <Button
-                            variant="outline"
-                            className="w-full hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent cursor-pointer"
-                          >
-                            Try Template
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href={user ? "/pricing" : "/auth/login"}>
-                          <Button
-                            variant="outline"
-                            className="w-full hover:bg-primary hover:text-primary-foreground transition-colors bg-transparent cursor-pointer"
-                          >
-                            {user ? "Upgrade" : "Sign In to Access"}
-                          </Button>
-                        </Link>
-                      )}
-                    </CardContent>
-                  </Card>
+                    template={template}
+                    globalIndex={globalIndex}
+                    userPlan={userPlan}
+                    user={user}
+                  />
                 )
               })}
             </div>
@@ -240,4 +269,4 @@ export function TemplatesSection() {
       </div>
     </section>
   )
-}
+})

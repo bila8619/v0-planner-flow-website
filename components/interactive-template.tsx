@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useMemo, useCallback, memo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,7 +28,11 @@ interface TemplateProps {
   templateDescription: string
 }
 
-export function InteractiveTemplate({ templateId, templateName, templateDescription }: TemplateProps) {
+export const InteractiveTemplate = memo(function InteractiveTemplate({
+  templateId,
+  templateName,
+  templateDescription,
+}: TemplateProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTask, setNewTask] = useState("")
   const [selectedPriority, setSelectedPriority] = useState("")
@@ -36,9 +42,52 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [showSaveAnimation, setShowSaveAnimation] = useState(false)
 
+  const templateConfig = useMemo(() => {
+    return templateConfigs[templateId as keyof typeof templateConfigs]
+  }, [templateId])
+
+  const dropdownOptions = useMemo(() => {
+    if (!templateConfig) {
+      return {
+        category: dropdownData.goalCategories,
+        priority: dropdownData.priorityLevels,
+        timeframe: dropdownData.timeFrames,
+      }
+    }
+
+    const categoryKey = templateConfig.dropdowns.category
+    return {
+      category: dropdownData[categoryKey as keyof typeof dropdownData] || dropdownData.goalCategories,
+      priority: dropdownData.priorityLevels,
+      timeframe: dropdownData.timeFrames,
+    }
+  }, [templateConfig])
+
+  const completionPercentage = useMemo(() => {
+    return tasks.length > 0 ? Math.round((tasks.filter((t) => t.completed).length / tasks.length) * 100) : 0
+  }, [tasks])
+
+  const tasksByCategory = useMemo(() => {
+    return tasks.reduce(
+      (acc, task) => {
+        if (!acc[task.category]) {
+          acc[task.category] = []
+        }
+        acc[task.category].push(task)
+        return acc
+      },
+      {} as Record<string, Task[]>,
+    )
+  }, [tasks])
+
+  const taskStats = useMemo(() => {
+    const completed = tasks.filter((t) => t.completed).length
+    const remaining = tasks.length - completed
+    return { total: tasks.length, completed, remaining }
+  }, [tasks])
+
   useEffect(() => {
     const savedData = localStorage.getItem(`template-${templateId}`)
-    const templateConfig = templateConfigs[templateId as keyof typeof templateConfigs]
 
     if (savedData) {
       const parsed = JSON.parse(savedData)
@@ -61,24 +110,7 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
       })
       setTasks(defaultTasks)
     }
-  }, [templateId])
-
-  const getDropdownOptions = (type: "category" | "priority" | "timeframe") => {
-    const templateConfig = templateConfigs[templateId as keyof typeof templateConfigs]
-    if (!templateConfig) return dropdownData.goalCategories
-
-    switch (type) {
-      case "category":
-        const categoryKey = templateConfig.dropdowns.category
-        return dropdownData[categoryKey as keyof typeof dropdownData] || dropdownData.goalCategories
-      case "priority":
-        return dropdownData.priorityLevels
-      case "timeframe":
-        return dropdownData.timeFrames
-      default:
-        return dropdownData.goalCategories
-    }
-  }
+  }, [templateId, templateConfig])
 
   useEffect(() => {
     if (tasks.length > 0 || notes.trim()) {
@@ -87,27 +119,26 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
 
       const dataToSave = { tasks, notes }
 
-      try {
-        localStorage.setItem(`template-${templateId}`, JSON.stringify(dataToSave))
-
-        const timer = setTimeout(() => {
+      const saveTimer = setTimeout(() => {
+        try {
+          localStorage.setItem(`template-${templateId}`, JSON.stringify(dataToSave))
           setSaveStatus("saved")
           setTimeout(() => {
             setShowSaveAnimation(false)
           }, 2000)
-        }, 1200)
+        } catch (error) {
+          setSaveStatus("error")
+          setTimeout(() => {
+            setShowSaveAnimation(false)
+          }, 3000)
+        }
+      }, 500) // 500ms debounce
 
-        return () => clearTimeout(timer)
-      } catch (error) {
-        setSaveStatus("error")
-        setTimeout(() => {
-          setShowSaveAnimation(false)
-        }, 3000)
-      }
+      return () => clearTimeout(saveTimer)
     }
   }, [tasks, notes, templateId])
 
-  const addTask = () => {
+  const addTask = useCallback(() => {
     if (newTask.trim()) {
       const task: Task = {
         id: Date.now().toString(),
@@ -117,31 +148,26 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
         category: selectedCategory || "General",
         timeframe: selectedTimeframe || "This Week",
       }
-      setTasks([...tasks, task])
+      setTasks((prev) => [...prev, task])
       setNewTask("")
     }
-  }
+  }, [newTask, selectedPriority, selectedCategory, selectedTimeframe])
 
-  const toggleTask = (taskId: string) => {
-    setTasks(tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)))
-  }
+  const toggleTask = useCallback((taskId: string) => {
+    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)))
+  }, [])
 
-  const deleteTask = (taskId: string) => {
-    setTasks(tasks.filter((task) => task.id !== taskId))
-  }
+  const deleteTask = useCallback((taskId: string) => {
+    setTasks((prev) => prev.filter((task) => task.id !== taskId))
+  }, [])
 
-  const completionPercentage =
-    tasks.length > 0 ? Math.round((tasks.filter((t) => t.completed).length / tasks.length) * 100) : 0
-
-  const tasksByCategory = tasks.reduce(
-    (acc, task) => {
-      if (!acc[task.category]) {
-        acc[task.category] = []
+  const handleKeyPress = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        addTask()
       }
-      acc[task.category].push(task)
-      return acc
     },
-    {} as Record<string, Task[]>,
+    [addTask],
   )
 
   return (
@@ -157,7 +183,8 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                   alt="PlannerFlow - Create. Focus. Repeat."
                   width={180}
                   height={60}
-                  className="h-8 sm:h-10 w-auto" // increased from h-6 sm:h-8 to h-8 sm:h-10 for bigger logo on mobile and desktop
+                  className="h-8 sm:h-10 w-auto"
+                  priority
                 />
               </div>
               <div className="hidden sm:block h-6 w-px bg-border" />
@@ -168,9 +195,9 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
             </div>
             <Button
               variant="outline"
-              size="lg" // increased size from sm to lg
+              size="lg"
               onClick={() => window.history.back()}
-              className="bg-primary text-primary-foreground hover:bg-white hover:text-primary cursor-pointer" // changed to red background with white text initially, hover reverses colors
+              className="bg-primary text-primary-foreground hover:bg-white hover:text-primary cursor-pointer"
             >
               <span className="hidden sm:inline">Back to Templates</span>
               <span className="sm:hidden">Back</span>
@@ -212,19 +239,19 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                 <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
                   <div className="p-2 sm:p-3 rounded-lg bg-background/50 transition-all duration-300 hover:bg-background/80">
                     <div className="text-xl sm:text-2xl font-bold text-primary transition-all duration-500">
-                      {tasks.length}
+                      {taskStats.total}
                     </div>
                     <div className="text-xs text-muted-foreground">Total Tasks</div>
                   </div>
                   <div className="p-2 sm:p-3 rounded-lg bg-background/50 transition-all duration-300 hover:bg-background/80">
                     <div className="text-xl sm:text-2xl font-bold text-accent transition-all duration-500">
-                      {tasks.filter((t) => t.completed).length}
+                      {taskStats.completed}
                     </div>
                     <div className="text-xs text-muted-foreground">Completed</div>
                   </div>
                   <div className="p-2 sm:p-3 rounded-lg bg-background/50 transition-all duration-300 hover:bg-background/80">
                     <div className="text-xl sm:text-2xl font-bold text-muted-foreground transition-all duration-500">
-                      {tasks.filter((t) => !t.completed).length}
+                      {taskStats.remaining}
                     </div>
                     <div className="text-xs text-muted-foreground">Remaining</div>
                   </div>
@@ -242,7 +269,7 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                   placeholder="Enter task description..."
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && addTask()}
+                  onKeyPress={handleKeyPress}
                   className="transition-all duration-200 focus:scale-[1.02]"
                 />
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -251,7 +278,7 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                       <SelectValue placeholder="Priority" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getDropdownOptions("priority").map((priority) => (
+                      {dropdownOptions.priority.map((priority) => (
                         <SelectItem key={priority} value={priority}>
                           {priority}
                         </SelectItem>
@@ -263,7 +290,7 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                       <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getDropdownOptions("category").map((category) => (
+                      {dropdownOptions.category.map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}
                         </SelectItem>
@@ -275,7 +302,7 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                       <SelectValue placeholder="Timeframe" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getDropdownOptions("timeframe").map((timeframe) => (
+                      {dropdownOptions.timeframe.map((timeframe) => (
                         <SelectItem key={timeframe} value={timeframe}>
                           {timeframe}
                         </SelectItem>
@@ -321,100 +348,13 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
               </Card>
             ) : (
               Object.entries(tasksByCategory).map(([category, categoryTasks]) => (
-                <Card key={category} className="border-border bg-card transition-all duration-300 hover:shadow-md">
-                  <CardHeader className="pb-3 sm:pb-6">
-                    <CardTitle className="text-card-foreground flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-accent" />
-                      {category}
-                      <span className="text-sm text-muted-foreground ml-auto">
-                        {categoryTasks.filter((t) => t.completed).length}/{categoryTasks.length}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {categoryTasks.map((task, index) => (
-                        <div
-                          key={task.id}
-                          className="flex items-center gap-3 p-3 sm:p-4 rounded-lg border border-border bg-background/50 transition-all duration-300 hover:bg-background/80 hover:shadow-sm animate-in slide-in-from-top-2"
-                          style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={() => toggleTask(task.id)}
-                            className="transition-all duration-200 hover:scale-110"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-sm transition-all duration-300 ${
-                                task.completed
-                                  ? "line-through text-muted-foreground opacity-60"
-                                  : "text-card-foreground"
-                              }`}
-                            >
-                              {task.text}
-                            </p>
-                            <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
-                              <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary transition-all duration-200 hover:bg-primary/20">
-                                {task.priority}
-                              </span>
-                              <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground transition-all duration-200 hover:bg-muted/80">
-                                {task.timeframe}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleTask(task.id)}
-                              className={`transition-all duration-200 hover:scale-110 active:scale-95 ${
-                                task.completed
-                                  ? "text-primary hover:bg-black hover:text-white"
-                                  : "text-primary hover:bg-green-600 hover:text-white"
-                              }`}
-                            >
-                              <span className="hidden sm:inline">{task.completed ? "Undo" : "Complete"}</span>
-                              <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                {task.completed ? (
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                                  />
-                                ) : (
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M5 13l4 4L19 7"
-                                  />
-                                )}
-                              </svg>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteTask(task.id)}
-                              className="text-destructive hover:bg-destructive hover:text-white transition-all duration-200 hover:scale-110 active:scale-95"
-                            >
-                              <span className="hidden sm:inline">Delete</span>
-                              <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                <TaskCategory
+                  key={category}
+                  category={category}
+                  tasks={categoryTasks}
+                  onToggleTask={toggleTask}
+                  onDeleteTask={deleteTask}
+                />
               ))
             )}
           </div>
@@ -493,11 +433,11 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
                   <div className="text-xs text-muted-foreground mb-3">Complete</div>
                   <div className="flex justify-center gap-4 text-xs">
                     <div>
-                      <span className="font-medium text-foreground">{tasks.filter((t) => t.completed).length}</span>
+                      <span className="font-medium text-foreground">{taskStats.completed}</span>
                       <span className="text-muted-foreground"> done</span>
                     </div>
                     <div>
-                      <span className="font-medium text-foreground">{tasks.filter((t) => !t.completed).length}</span>
+                      <span className="font-medium text-foreground">{taskStats.remaining}</span>
                       <span className="text-muted-foreground"> left</span>
                     </div>
                   </div>
@@ -509,4 +449,126 @@ export function InteractiveTemplate({ templateId, templateName, templateDescript
       </div>
     </div>
   )
-}
+})
+
+const TaskCategory = memo(function TaskCategory({
+  category,
+  tasks,
+  onToggleTask,
+  onDeleteTask,
+}: {
+  category: string
+  tasks: Task[]
+  onToggleTask: (taskId: string) => void
+  onDeleteTask: (taskId: string) => void
+}) {
+  const completedCount = useMemo(() => tasks.filter((t) => t.completed).length, [tasks])
+
+  return (
+    <Card className="border-border bg-card transition-all duration-300 hover:shadow-md">
+      <CardHeader className="pb-3 sm:pb-6">
+        <CardTitle className="text-card-foreground flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-accent" />
+          {category}
+          <span className="text-sm text-muted-foreground ml-auto">
+            {completedCount}/{tasks.length}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {tasks.map((task, index) => (
+            <TaskItem key={task.id} task={task} index={index} onToggle={onToggleTask} onDelete={onDeleteTask} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+})
+
+const TaskItem = memo(function TaskItem({
+  task,
+  index,
+  onToggle,
+  onDelete,
+}: {
+  task: Task
+  index: number
+  onToggle: (taskId: string) => void
+  onDelete: (taskId: string) => void
+}) {
+  const handleToggle = useCallback(() => onToggle(task.id), [task.id, onToggle])
+  const handleDelete = useCallback(() => onDelete(task.id), [task.id, onDelete])
+
+  return (
+    <div
+      className="flex items-center gap-3 p-3 sm:p-4 rounded-lg border border-border bg-background/50 transition-all duration-300 hover:bg-background/80 hover:shadow-sm animate-in slide-in-from-top-2"
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <Checkbox
+        checked={task.completed}
+        onCheckedChange={handleToggle}
+        className="transition-all duration-200 hover:scale-110"
+      />
+      <div className="flex-1 min-w-0">
+        <p
+          className={`text-sm transition-all duration-300 ${
+            task.completed ? "line-through text-muted-foreground opacity-60" : "text-card-foreground"
+          }`}
+        >
+          {task.text}
+        </p>
+        <div className="flex flex-wrap gap-1 sm:gap-2 mt-2">
+          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary transition-all duration-200 hover:bg-primary/20">
+            {task.priority}
+          </span>
+          <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground transition-all duration-200 hover:bg-muted/80">
+            {task.timeframe}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleToggle}
+          className={`transition-all duration-200 hover:scale-110 active:scale-95 ${
+            task.completed
+              ? "text-primary hover:bg-black hover:text-white"
+              : "text-primary hover:bg-green-600 hover:text-white"
+          }`}
+        >
+          <span className="hidden sm:inline">{task.completed ? "Undo" : "Complete"}</span>
+          <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {task.completed ? (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+              />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            )}
+          </svg>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDelete}
+          className="text-destructive hover:bg-destructive hover:text-white transition-all duration-200 hover:scale-110 active:scale-95"
+        >
+          <span className="hidden sm:inline">Delete</span>
+          <svg className="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </Button>
+      </div>
+    </div>
+  )
+})

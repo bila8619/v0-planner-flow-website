@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { Download } from "lucide-react"
 
 import { useState, useEffect, useMemo, useCallback, memo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
+import { ExportDialog } from "@/components/export-dialog"
+import { useAuth } from "@/components/auth-provider"
 import { dropdownData, templateConfigs } from "@/lib/template-data"
 import Image from "next/image"
 
@@ -41,6 +44,8 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
   const [notes, setNotes] = useState("")
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [showSaveAnimation, setShowSaveAnimation] = useState(false)
+
+  const { user, userProfile } = useAuth()
 
   const templateConfig = useMemo(() => {
     return templateConfigs[templateId as keyof typeof templateConfigs]
@@ -179,7 +184,7 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
             <div className="flex items-center space-x-2 sm:space-x-4">
               <div className="flex items-center space-x-2">
                 <Image
-                  src="/logo-black.png"
+                  src="/plannerflow-logo.png"
                   alt="PlannerFlow - Create. Focus. Repeat."
                   width={180}
                   height={60}
@@ -193,19 +198,48 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
                 <p className="text-sm text-muted-foreground">{templateDescription}</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => window.history.back()}
-              className="bg-primary text-primary-foreground hover:bg-white hover:text-primary cursor-pointer"
-            >
-              <span className="hidden sm:inline">Back to Templates</span>
-              <span className="sm:hidden">Back</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {userProfile && (
+                <ExportDialog
+                  templateName={templateName}
+                  templateData={{ tasks, notes }}
+                  userPlan={userProfile.subscription_plan}
+                >
+                  <Button variant="outline" size="lg" className="hidden sm:flex bg-transparent">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </ExportDialog>
+              )}
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => window.history.back()}
+                className="bg-primary text-primary-foreground hover:bg-white hover:text-primary cursor-pointer"
+              >
+                <span className="hidden sm:inline">Back to Templates</span>
+                <span className="sm:hidden">Back</span>
+              </Button>
+            </div>
           </div>
           <div className="sm:hidden mt-3 pt-3 border-t border-border">
-            <h1 className="text-lg font-semibold text-foreground">{templateName}</h1>
-            <p className="text-sm text-muted-foreground">{templateDescription}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-semibold text-foreground">{templateName}</h1>
+                <p className="text-sm text-muted-foreground">{templateDescription}</p>
+              </div>
+              {userProfile && (
+                <ExportDialog
+                  templateName={templateName}
+                  templateData={{ tasks, notes }}
+                  userPlan={userProfile.subscription_plan}
+                >
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </ExportDialog>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ export default function SignUpSuccessPage() {
           <div className="flex h-16 items-center">
             <Link href="/" className="flex items-center space-x-2">
               <Image
-                src="/logo-black.png"
+                src="/plannerflow-logo.png"
                 alt="PlannerFlow - Create. Focus. Repeat."
                 width={180}
                 height={60}

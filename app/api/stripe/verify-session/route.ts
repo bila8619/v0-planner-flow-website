@@ -41,11 +41,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[v0] POST request received for session verification")
-
     // Check if Stripe is configured
     if (!isStripeConfigured() || !stripe) {
-      console.log("[v0] Stripe not configured for session verification")
       return NextResponse.json({ error: "Payment system is not configured" }, { status: 503 })
     }
 
@@ -53,21 +50,15 @@ export async function POST(request: NextRequest) {
     const { sessionId } = body
 
     if (!sessionId) {
-      console.log("[v0] Missing session ID in POST request")
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 })
     }
-
-    console.log("[v0] Verifying Stripe session:", sessionId)
 
     // Retrieve the session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["line_items", "subscription"],
     })
 
-    console.log("[v0] Session retrieved, payment status:", session.payment_status)
-
     if (session.payment_status !== "paid") {
-      console.log("[v0] Payment not completed for session:", sessionId)
       return NextResponse.json({ error: "Payment not completed" }, { status: 400 })
     }
 
@@ -80,12 +71,10 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
     }
 
-    console.log("[v0] Session verification successful:", sessionData)
-
     // Return session data
     return NextResponse.json(sessionData)
   } catch (error) {
-    console.error("[v0] Session verification error:", error)
+    console.error("Session verification error:", error)
     return NextResponse.json({ error: "Failed to verify session" }, { status: 500 })
   }
 }

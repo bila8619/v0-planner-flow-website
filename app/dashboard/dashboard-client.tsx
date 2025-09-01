@@ -181,7 +181,7 @@ export function DashboardClient() {
               </Badge>
               <p className="text-sm text-muted-foreground leading-relaxed">{currentPlan.description}</p>
               {userProfile.subscription_plan !== "family" && (
-                <Link href="/pricing" className="block">
+                <Link href="/pricing">
                   <Button size="sm" className="w-full bg-red-600 text-white hover:bg-red-600 hover:text-white">
                     Upgrade Plan
                   </Button>

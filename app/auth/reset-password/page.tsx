@@ -25,25 +25,15 @@ export default function ResetPasswordPage() {
   const [tokenType, setTokenType] = useState<string | null>(null)
 
   useEffect(() => {
-    console.log("[v0] Reset password page mounted")
-    console.log("[v0] Current URL:", window.location.href)
-
     const token_hash = searchParams.get("token_hash")
     const type = searchParams.get("type")
 
-    console.log("[v0] Extracted parameters:", {
-      token_hash: token_hash ? `${token_hash.substring(0, 10)}...` : null,
-      type,
-    })
-
     if (!token_hash || !type) {
-      console.log("[v0] Missing required URL parameters")
       setError("Invalid reset link. Missing required parameters.")
       return
     }
 
     if (type !== "recovery") {
-      console.log("[v0] Invalid token type")
       setError("Invalid reset link. Incorrect token type.")
       return
     }
@@ -54,9 +44,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (isSuccess) {
-      console.log("[v0] Password reset successful, setting redirect timer")
       const timer = setTimeout(() => {
-        console.log("[v0] Redirecting to login page")
         router.push("/auth/login")
       }, 2000)
       return () => {
@@ -67,16 +55,13 @@ export default function ResetPasswordPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[v0] Password reset form submitted")
 
     if (!password.trim()) {
-      console.log("[v0] Password validation failed - empty password")
       setError("Please enter a password")
       return
     }
 
     if (!tokenHash || !tokenType) {
-      console.log("[v0] Missing token parameters")
       setError("Invalid reset link. Please request a new password reset.")
       return
     }
@@ -85,11 +70,6 @@ export default function ResetPasswordPage() {
     setError(null)
 
     try {
-      console.log("[v0] Calling server-side reset password API...")
-      console.log("[v0] Request URL:", "/api/auth/reset-password")
-      console.log("[v0] Request method:", "POST")
-      console.log("[v0] Request headers:", { "Content-Type": "application/json" })
-
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: {
@@ -102,30 +82,15 @@ export default function ResetPasswordPage() {
         }),
       })
 
-      console.log("[v0] Fetch completed")
-      console.log("[v0] Response status:", response.status)
-      console.log("[v0] Response ok:", response.ok)
-      console.log("[v0] Response headers:", Object.fromEntries(response.headers.entries()))
-
       const data = await response.json()
-
-      console.log("[v0] Server API response:", {
-        status: response.status,
-        success: data.success,
-        error: data.error,
-      })
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to reset password")
       }
 
-      console.log("[v0] Password reset successful!")
       setIsSuccess(true)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred"
-      console.log("[v0] Password reset error:", errorMessage)
-      console.log("[v0] Error type:", typeof error)
-      console.log("[v0] Error object:", error)
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -133,7 +98,6 @@ export default function ResetPasswordPage() {
   }
 
   if (!tokenHash || !tokenType) {
-    console.log("[v0] Rendering invalid token state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -161,7 +125,6 @@ export default function ResetPasswordPage() {
   }
 
   if (isSuccess) {
-    console.log("[v0] Rendering success state")
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <Header />
@@ -195,7 +158,6 @@ export default function ResetPasswordPage() {
     )
   }
 
-  console.log("[v0] Rendering password reset form")
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />

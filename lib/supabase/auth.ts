@@ -17,8 +17,8 @@ export const PLAN_TEMPLATE_LIMITS = {
   free: 5,
   essential: 25, // Updated from 15 to 25 templates for Essential plan
   complete: 45, // Updated from 30 to 45 templates for Complete plan
-  pro: 45, // Pro gets all templates
-  family: 45, // Family gets all templates
+  pro: 45,
+  family: 45,
 } as const
 
 const profileCache: { [userId: string]: { profile: UserProfile | null; timestamp: number } } = {}
@@ -41,7 +41,6 @@ export async function getUserProfile(user: User, forceRefresh = false): Promise<
   // Check cache first to avoid unnecessary database calls
   const cached = profileCache[user.id]
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION && !forceRefresh) {
-    console.log("[v0] Using cached profile:", cached.profile?.subscription_plan)
     return cached.profile
   }
 
@@ -49,15 +48,9 @@ export async function getUserProfile(user: User, forceRefresh = false): Promise<
   const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
   if (error) {
-    console.error("[v0] Error fetching user profile:", error)
+    console.error("Error fetching user profile:", error)
     return null
   }
-
-  console.log("[v0] Fresh profile from database:", {
-    plan: data?.subscription_plan,
-    status: data?.subscription_status,
-    stripe_customer_id: data?.stripe_customer_id,
-  })
 
   // Cache the result
   profileCache[user.id] = { profile: data, timestamp: Date.now() }

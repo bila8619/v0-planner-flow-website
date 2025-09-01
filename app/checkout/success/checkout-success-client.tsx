@@ -79,15 +79,12 @@ export function CheckoutSuccessClient() {
         body: JSON.stringify({ sessionId }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log("[v0] Subscription updated manually:", data)
-      } else {
+      if (!response.ok) {
         const errorData = await response.json()
-        console.error("[v0] Manual subscription update failed:", errorData)
+        console.error("Manual subscription update failed:", errorData)
       }
     } catch (error) {
-      console.error("[v0] Manual subscription update error:", error)
+      console.error("Manual subscription update error:", error)
     }
   }
 

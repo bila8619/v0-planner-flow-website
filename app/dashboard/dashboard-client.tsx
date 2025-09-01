@@ -174,7 +174,11 @@ export function DashboardClient() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Badge className={`${currentPlan.color} text-white text-sm px-3 py-1`}>{currentPlan.name}</Badge>
+              <Badge
+                className={`${currentPlan.color} text-white text-sm px-3 py-1 hover:opacity-90 transition-opacity`}
+              >
+                {currentPlan.name}
+              </Badge>
               <p className="text-sm text-muted-foreground leading-relaxed">{currentPlan.description}</p>
               {userProfile.subscription_plan !== "family" && (
                 <Link href="/pricing" className="block">
@@ -286,12 +290,20 @@ export function DashboardClient() {
                               </p>
                               {isAccessible ? (
                                 <Link href={`/templates/${template.id}`}>
-                                  <Button size="sm" className="w-full text-xs">
+                                  <Button
+                                    size="sm"
+                                    className="w-full text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                                  >
                                     Open Template
                                   </Button>
                                 </Link>
                               ) : (
-                                <Button size="sm" variant="outline" className="w-full text-xs bg-transparent" disabled>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full text-xs bg-transparent hover:bg-muted/50"
+                                  disabled
+                                >
                                   Requires Upgrade
                                 </Button>
                               )}
@@ -336,7 +348,7 @@ export function DashboardClient() {
               </Link>
               {userProfile.subscription_plan !== "free" && userProfile.subscription_plan !== "family" && (
                 <Link href="/templates">
-                  <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto bg-transparent hover:bg-muted/50">
                     Browse All Templates
                   </Button>
                 </Link>

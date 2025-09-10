@@ -556,7 +556,7 @@ const TaskItem = memo(function TaskItem({
           <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary transition-all duration-200 hover:bg-primary/20">
             {task.priority}
           </span>
-          <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground transition-all duration-200 hover:bg-muted/80">
+          <span className="text-xs px-2 py-1 rounded-full bg-muted text-slate-600 transition-all duration-200 hover:bg-muted/80">
             {task.timeframe}
           </span>
         </div>

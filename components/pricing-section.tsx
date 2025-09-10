@@ -32,20 +32,20 @@ export function PricingSection() {
     try {
       const priceMapping: Record<string, { monthly: string; yearly: string }> = {
         "essential plan": {
-          monthly: "price_1S17foJTZ7RccFMAu0YJ06WR",
-          yearly: "price_1S17fRJTZ7RccFMAyRzB3FpU",
+          monthly: "price_1S15IoJUG8OCdoSpiVcPUHuf",
+          yearly: "price_1S15KZJUG8OCdoSpsZAO33ZG",
         },
         "complete plan": {
-          monthly: "price_1S1CkaJTZ7RccFMABeclHUSU",
-          yearly: "price_1S1ClCJTZ7RccFMA4fUtuxYC",
+          monthly: "price_1S15LOJUG8OCdoSpe0DuDBTB",
+          yearly: "price_1S15MZJUG8OCdoSpScCXxVBD",
         },
         "pro plan": {
-          monthly: "price_1S1CljJTZ7RccFMAFiSa39nD",
-          yearly: "price_1S1Cm3JTZ7RccFMAwPLMBAvJ",
+          monthly: "price_1S15NWJUG8OCdoSpAgX8h9qf",
+          yearly: "price_1S15P9JUG8OCdoSpkTYqfINY",
         },
         "family plan": {
-          monthly: "price_1S1CmOJTZ7RccFMAbrUjseZd",
-          yearly: "price_1S1CmmJTZ7RccFMAYFGt4ISL",
+          monthly: "price_1S15PoJUG8OCdoSpARHAcwVk",
+          yearly: "price_1S15QWJUG8OCdoSp4adb69J9",
         },
       }
 

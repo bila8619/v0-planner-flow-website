@@ -13,27 +13,27 @@ export const isStripeConfigured = (): boolean => {
 }
 
 export const STRIPE_PRICE_IDS = {
-  essential_monthly: "price_1S17foJTZ7RccFMAu0YJ06WR",
-  essential_yearly: "price_1S17fRJTZ7RccFMAyRzB3FpU",
-  complete_monthly: "price_1S1CkaJTZ7RccFMABeclHUSU",
-  complete_yearly: "price_1S1ClCJTZ7RccFMA4fUtuxYC",
-  pro_monthly: "price_1S1CljJTZ7RccFMAFiSa39nD",
-  pro_yearly: "price_1S1Cm3JTZ7RccFMAwPLMBAvJ",
-  family_monthly: "price_1S1CmOJTZ7RccFMAbrUjseZd",
-  family_yearly: "price_1S1CmmJTZ7RccFMAYFGt4ISL",
+  essential_monthly: "price_1S15IoJUG8OCdoSpiVcPUHuf",
+  essential_yearly: "price_1S15KZJUG8OCdoSpsZAO33ZG",
+  complete_monthly: "price_1S15LOJUG8OCdoSpe0DuDBTB",
+  complete_yearly: "price_1S15MZJUG8OCdoSpScCXxVBD",
+  pro_monthly: "price_1S15NWJUG8OCdoSpAgX8h9qf",
+  pro_yearly: "price_1S15P9JUG8OCdoSpkTYqfINY",
+  family_monthly: "price_1S15PoJUG8OCdoSpARHAcwVk",
+  family_yearly: "price_1S15QWJUG8OCdoSp4adb69J9",
 }
 
 export const priceToPlan: Record<string, string> = {
   // Essential Plan
-  price_1S17foJTZ7RccFMAu0YJ06WR: "essential",
-  price_1S17fRJTZ7RccFMAyRzB3FpU: "essential",
+  price_1S15IoJUG8OCdoSpiVcPUHuf: "essential",
+  price_1S15KZJUG8OCdoSpsZAO33ZG: "essential",
   // Complete Plan
-  price_1S1CkaJTZ7RccFMABeclHUSU: "complete",
-  price_1S1ClCJTZ7RccFMA4fUtuxYC: "complete",
+  price_1S15LOJUG8OCdoSpe0DuDBTB: "complete",
+  price_1S15MZJUG8OCdoSpScCXxVBD: "complete",
   // Pro Plan
-  price_1S1CljJTZ7RccFMAFiSa39nD: "pro",
-  price_1S1Cm3JTZ7RccFMAwPLMBAvJ: "pro",
+  price_1S15NWJUG8OCdoSpAgX8h9qf: "pro",
+  price_1S15P9JUG8OCdoSpkTYqfINY: "pro",
   // Family Plan
-  price_1S1CmOJTZ7RccFMAbrUjseZd: "family",
-  price_1S1CmmJTZ7RccFMAYFGt4ISL: "family",
+  price_1S15PoJUG8OCdoSpARHAcwVk: "family",
+  price_1S15QWJUG8OCdoSp4adb69J9: "family",
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -15,78 +15,139 @@ export function PricingSection() {
   const { user, loading } = useAuth()
   const router = useRouter()
 
-  const handleSubscribe = async (planName: string) => {
-    if (loading) {
-      toast.error("Please wait while we load your session")
-      return
+  useEffect(() => {
+    console.log("[v0] PricingSection mounted, resetting loading state")
+    setLoadingPlan(null)
+  }, [user])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        console.log("[v0] Page became visible, resetting loading state")
+        setLoadingPlan(null)
+      }
     }
 
-    if (!user) {
-      toast.info("Please sign in to purchase a subscription")
-      router.push("/auth/login")
-      return
-    }
-
-    setLoadingPlan(planName)
-
-    try {
-      const priceMapping: Record<string, { monthly: string; yearly: string }> = {
-        "essential plan": {
-          monthly: "price_1S15IoJUG8OCdoSpiVcPUHuf",
-          yearly: "price_1S15KZJUG8OCdoSpsZAO33ZG",
-        },
-        "complete plan": {
-          monthly: "price_1S15LOJUG8OCdoSpe0DuDBTB",
-          yearly: "price_1S15MZJUG8OCdoSpScCXxVBD",
-        },
-        "pro plan": {
-          monthly: "price_1S15NWJUG8OCdoSpAgX8h9qf",
-          yearly: "price_1S15P9JUG8OCdoSpkTYqfINY",
-        },
-        "family plan": {
-          monthly: "price_1S15PoJUG8OCdoSpARHAcwVk",
-          yearly: "price_1S15QWJUG8OCdoSp4adb69J9",
-        },
-      }
-
-      const planKey = planName.toLowerCase()
-      const priceId = isYearly ? priceMapping[planKey]?.yearly : priceMapping[planKey]?.monthly
-
-      if (!priceId) {
-        toast.error("Plan not available yet")
-        return
-      }
-
-      const response = await fetch("/api/stripe/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          priceId: priceId,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        toast.error(errorData.error || "Failed to create checkout session")
-        return
-      }
-
-      const data = await response.json()
-
-      if (data?.url) {
-        window.location.href = data.url
-      } else {
-        toast.error("Failed to create checkout session")
-      }
-    } catch (error) {
-      console.error("Checkout error:", error)
-      toast.error("Something went wrong. Please try again.")
-    } finally {
+    const handleFocus = () => {
+      console.log("[v0] Window focused, resetting loading state")
       setLoadingPlan(null)
     }
-  }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [])
+
+  const handleSubscribe = useCallback(
+    async (planName: string) => {
+      console.log("[v0] Subscribe button clicked for plan:", planName)
+      console.log("[v0] Current loading plan:", loadingPlan)
+      console.log("[v0] Is yearly:", isYearly)
+      console.log("[v0] Loading state:", loading)
+      console.log("[v0] User state:", !!user)
+      console.log("[v0] User agent:", navigator.userAgent)
+
+      if (loadingPlan) {
+        console.log("[v0] Already processing a plan, ignoring click")
+        return
+      }
+
+      if (loading) {
+        toast.error("Please wait while we load your session")
+        return
+      }
+
+      if (!user) {
+        toast.info("Please sign in to purchase a subscription")
+        router.push("/auth/login")
+        return
+      }
+
+      setLoadingPlan(planName)
+
+      try {
+        const priceMapping: Record<string, { monthly: string; yearly: string }> = {
+          "essential plan": {
+            monthly: "price_1S15IoJUG8OCdoSpiVcPUHuf",
+            yearly: "price_1S15KZJUG8OCdoSpsZAO33ZG",
+          },
+          "complete plan": {
+            monthly: "price_1S15LOJUG8OCdoSpe0DuDBTB",
+            yearly: "price_1S15MZJUG8OCdoSpScCXxVBD",
+          },
+          "pro plan": {
+            monthly: "price_1S15NWJUG8OCdoSpAgX8h9qf",
+            yearly: "price_1S15P9JUG8OCdoSpkTYqfINY",
+          },
+          "family plan": {
+            monthly: "price_1S15PoJUG8OCdoSpARHAcwVk",
+            yearly: "price_1S15QWJUG8OCdoSp4adb69J9",
+          },
+        }
+
+        const planKey = planName.toLowerCase()
+        console.log("[v0] Plan key:", planKey)
+        console.log("[v0] Price mapping for plan:", priceMapping[planKey])
+
+        const priceId = isYearly ? priceMapping[planKey]?.yearly : priceMapping[planKey]?.monthly
+
+        console.log("[v0] Selected price ID:", priceId)
+        console.log("[v0] Billing cycle:", isYearly ? "yearly" : "monthly")
+
+        if (!priceId) {
+          console.log("[v0] No price ID found for plan:", planKey)
+          toast.error("Plan not available yet")
+          return
+        }
+
+        console.log("[v0] Making API call to create checkout session")
+        console.log("[v0] Request payload:", { priceId })
+
+        const response = await fetch("/api/stripe/create-checkout-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            priceId: priceId,
+          }),
+        })
+
+        console.log("[v0] API response status:", response.status)
+        console.log("[v0] API response ok:", response.ok)
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.log("[v0] API error data:", errorData)
+          toast.error(errorData.error || "Failed to create checkout session")
+          return
+        }
+
+        const data = await response.json()
+        console.log("[v0] API response data:", data)
+
+        if (data?.url) {
+          console.log("[v0] Redirecting to checkout URL:", data.url)
+          window.location.href = data.url
+        } else {
+          console.log("[v0] No checkout URL in response")
+          toast.error("Failed to create checkout session")
+        }
+      } catch (error) {
+        console.error("[v0] Checkout error:", error)
+        toast.error("Something went wrong. Please try again.")
+      } finally {
+        setTimeout(() => {
+          setLoadingPlan(null)
+        }, 1000)
+      }
+    },
+    [isYearly, loading, user, router, loadingPlan],
+  )
 
   const topRowPlans = [
     {
@@ -256,6 +317,7 @@ export function PricingSection() {
                     className={`w-full ${plan.buttonClass}`}
                     onClick={() => handleSubscribe(plan.name)}
                     disabled={loadingPlan === plan.name}
+                    key={`${plan.name}-${loadingPlan}`}
                   >
                     {loadingPlan === plan.name ? "Processing..." : plan.buttonText}
                   </Button>
@@ -295,6 +357,7 @@ export function PricingSection() {
                     className={`w-full ${familyPlan.buttonClass}`}
                     onClick={() => handleSubscribe(familyPlan.name)}
                     disabled={loadingPlan === familyPlan.name}
+                    key={`${familyPlan.name}-${loadingPlan}`}
                   >
                     {loadingPlan === familyPlan.name ? "Processing..." : familyPlan.buttonText}
                   </Button>

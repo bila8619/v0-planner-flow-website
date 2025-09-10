@@ -96,6 +96,7 @@ export function Footer() {
 
         <div className="border-t border-background/20 mt-8 pt-8 text-center text-sm text-background/60">
           <p>&copy; 2024 PlannerFlow. All rights reserved.</p>
+          <p className="mt-2">Plannerflow is an Official Brand of Innoquin LLC.</p>
         </div>
       </div>
     </footer>

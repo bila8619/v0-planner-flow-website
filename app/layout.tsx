@@ -18,6 +18,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.jpg", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.jpg", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.jpg", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
     title: "PlannerFlow - Digital Planning Templates",
     description: "Transform your productivity with 45+ interactive digital planning templates. Create. Focus. Repeat.",
@@ -54,7 +62,7 @@ export const metadata: Metadata = {
   verification: {
     google: "your-google-verification-code",
   },
-    generator: 'v0.app'
+  generator: "v0.app",
 }
 
 export default function RootLayout({

@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { Download } from "lucide-react"
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 import { useState, useEffect, useMemo, useCallback, memo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,6 +47,7 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
   const [showSaveAnimation, setShowSaveAnimation] = useState(false)
 
   const { user, userProfile } = useAuth()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
 
   const templateConfig = useMemo(() => {
     return templateConfigs[templateId as keyof typeof templateConfigs]
@@ -92,56 +94,100 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
   }, [tasks])
 
   useEffect(() => {
-    const savedData = localStorage.getItem(`template-${templateId}`)
+    let isMounted = true
 
-    if (savedData) {
-      const parsed = JSON.parse(savedData)
-      setTasks(parsed.tasks || [])
-      setNotes(parsed.notes || "")
-    } else if (templateConfig) {
-      // Pre-populate with template's default tasks
-      const defaultTasks: Task[] = []
-      templateConfig.sections.forEach((section, sectionIndex) => {
-        section.tasks.forEach((taskText, taskIndex) => {
-          defaultTasks.push({
-            id: `${sectionIndex}-${taskIndex}-${Date.now()}`,
-            text: taskText,
-            completed: false,
-            priority: "Medium",
-            category: section.title,
-            timeframe: "This Week",
+    async function loadInitial() {
+      try {
+        // Prefer per-user saved progress if logged in
+        if (user) {
+          const { data, error } = await supabase
+            .from("template_progress")
+            .select("tasks, notes")
+            .eq("user_id", user.id)
+            .eq("template_id", templateId)
+            .maybeSingle()
+
+          if (!error && data) {
+            if (!isMounted) return
+            const svTasks = Array.isArray(data.tasks) ? (data.tasks as Task[]) : []
+            setTasks(svTasks)
+            setNotes((data.notes as string) || "")
+            return
+          }
+        }
+
+        // Fallback: localStorage or defaults
+        const savedData = localStorage.getItem(`template-${templateId}`)
+        if (savedData) {
+          const parsed = JSON.parse(savedData)
+          if (!isMounted) return
+          setTasks(parsed.tasks || [])
+          setNotes(parsed.notes || "")
+        } else if (templateConfig) {
+          const defaultTasks: Task[] = []
+          templateConfig.sections.forEach((section, sectionIndex) => {
+            section.tasks.forEach((taskText, taskIndex) => {
+              defaultTasks.push({
+                id: `${sectionIndex}-${taskIndex}-${Date.now()}`,
+                text: taskText,
+                completed: false,
+                priority: "Medium",
+                category: section.title,
+                timeframe: "This Week",
+              })
+            })
           })
-        })
-      })
-      setTasks(defaultTasks)
+          if (!isMounted) return
+          setTasks(defaultTasks)
+        }
+      } catch {
+        // ignore and rely on fallback
+      }
     }
-  }, [templateId, templateConfig])
+
+    loadInitial()
+    return () => {
+      isMounted = false
+    }
+  }, [templateId, templateConfig, supabase, user])
 
   useEffect(() => {
-    if (tasks.length > 0 || notes.trim()) {
-      setSaveStatus("saving")
-      setShowSaveAnimation(true)
+    if (!(tasks.length > 0 || notes.trim())) return
 
-      const dataToSave = { tasks, notes }
+    setSaveStatus("saving")
+    setShowSaveAnimation(true)
 
-      const saveTimer = setTimeout(() => {
-        try {
-          localStorage.setItem(`template-${templateId}`, JSON.stringify(dataToSave))
-          setSaveStatus("saved")
-          setTimeout(() => {
-            setShowSaveAnimation(false)
-          }, 2000)
-        } catch (error) {
-          setSaveStatus("error")
-          setTimeout(() => {
-            setShowSaveAnimation(false)
-          }, 3000)
+    const dataToSave = { tasks, notes }
+
+    const saveTimer = setTimeout(async () => {
+      try {
+        // Always keep local backup
+        localStorage.setItem(`template-${templateId}`, JSON.stringify(dataToSave))
+
+        // If logged in, persist to Supabase too
+        if (user) {
+          const { error } = await supabase.from("template_progress").upsert(
+            {
+              user_id: user.id,
+              template_id: templateId,
+              tasks,
+              notes,
+            },
+            { onConflict: "user_id,template_id" },
+          )
+          if (error) throw error
         }
-      }, 500) // 500ms debounce
 
-      return () => clearTimeout(saveTimer)
-    }
-  }, [tasks, notes, templateId])
+        setSaveStatus("saved")
+        setTimeout(() => setShowSaveAnimation(false), 1500)
+      } catch (e) {
+        setSaveStatus("error")
+        setTimeout(() => setShowSaveAnimation(false), 2500)
+      }
+    }, 600)
+
+    return () => clearTimeout(saveTimer)
+  }, [tasks, notes, templateId, supabase, user])
 
   const addTask = useCallback(() => {
     if (newTask.trim()) {

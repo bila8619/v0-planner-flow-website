@@ -12,10 +12,15 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth-provider"
 import { getTemplateAccess, PLAN_TEMPLATE_LIMITS } from "@/lib/supabase/auth"
 import { templateCategories } from "@/lib/template-data"
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export function DashboardClient() {
   const { user, userProfile, loading: authLoading, refreshProfile } = useAuth()
   const [loadingTimeout, setLoadingTimeout] = useState(false)
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const [recentTemplates, setRecentTemplates] = useState<
+    Array<{ template_id: string; tasks: any[]; notes: string; updated_at: string }>
+  >([])
 
   const templateStats = useMemo(() => {
     const totalTemplates = Object.values(templateCategories).reduce(
@@ -63,6 +68,45 @@ export function DashboardClient() {
       setLoadingTimeout(false)
     }
   }, [authLoading])
+
+  useEffect(() => {
+    const active = true
+    async function loadProgress() {
+      if (!user) {
+        setRecentTemplates([])
+        return
+      }
+      const { data, error } = await supabase
+        .from("template_progress")
+        .select("template_id, tasks, notes, updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(12)
+
+      if (!active) return
+      if (!error && data) {
+        setRecentTemplates(data as any)
+      } else {
+        setRecentTemplates([])
+      }
+    }
+    loadProgress()
+    // re-fetch when profile refreshes
+  }, [user, supabase, userProfile])
+
+  function percentFromTasks(tasks: any[]): number {
+    if (!Array.isArray(tasks) || tasks.length === 0) return 0
+    const completed = tasks.filter((t) => t && t.completed).length
+    return Math.round((completed / tasks.length) * 100)
+  }
+
+  const templateMap = useMemo(() => {
+    const m = new Map<string, any>()
+    Object.entries(templateCategories).forEach(([, cat]) => {
+      cat.templates.forEach((t) => m.set(t.id, t))
+    })
+    return m
+  }, [])
 
   if (loadingTimeout) {
     return (
@@ -247,6 +291,50 @@ export function DashboardClient() {
             </CardContent>
           </Card>
         </div>
+
+        {recentTemplates.length > 0 && (
+          <div className="space-y-4 md:space-y-6 mb-8 md:mb-12">
+            <div className="space-y-1">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground">Continue where you left off</h2>
+              <p className="text-muted-foreground">Jump back into your in‑progress templates</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {recentTemplates.map((row) => {
+                const tpl = templateMap.get(row.template_id)
+                const pct = percentFromTasks(row.tasks)
+                if (!tpl) return null
+                return (
+                  <Card key={row.template_id} className="border-0 shadow-sm hover:shadow-md transition-all">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xl">{tpl.emoji}</span>
+                          <h3 className="font-medium text-sm leading-tight truncate">{tpl.name}</h3>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(row.updated_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{tpl.description}</p>
+                      <div>
+                        <Progress value={pct} className="h-2" />
+                        <div className="mt-1 text-xs text-muted-foreground">{pct}% complete</div>
+                      </div>
+                      <Link href={`/templates/${row.template_id}`}>
+                        <Button
+                          size="sm"
+                          className="w-full text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                          Continue
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-8 md:space-y-12">
           <div className="space-y-2">

@@ -8,6 +8,7 @@ export function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
+            {/* Prominent brand logo on homepage hero */}
             <div className="space-y-4">
               <h1 className="text-4xl lg:text-6xl font-bold text-balance leading-tight">
                 Transform Your

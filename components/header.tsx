@@ -7,19 +7,22 @@ import { useState } from "react"
 import { Menu, X, User, LogOut } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { usePathname } from "next/navigation"
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, loading } = useAuth()
+  const pathname = usePathname()
+  const isHomepage = pathname === "/"
 
   const handleLogout = async () => {
     const supabase = createClient()
-
     try {
-      console.log("[v0] Starting logout process")
       await supabase.auth.signOut()
-      console.log("[v0] Logout completed")
       setIsMobileMenuOpen(false)
+      if (typeof window !== "undefined") {
+        window.location.assign("/")
+      }
     } catch (error) {
       console.error("Error during logout:", error)
     }
@@ -31,7 +34,7 @@ export function Header() {
 
   return (
     <>
-      <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2.5">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center space-x-2 mx-[3px]">
@@ -40,7 +43,7 @@ export function Header() {
                 alt="PlannerFlow - Create. Focus. Repeat."
                 width={200}
                 height={50}
-                className="h-10 w-auto"
+                className={isHomepage ? "h-14 w-auto md:h-16" : "h-10 w-auto"}
                 priority
               />
             </Link>
@@ -85,6 +88,13 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-4">
+              {!loading && !user && (
+                <Link href="/auth/login" className="md:hidden">
+                  <Button variant="ghost" size="sm" className="cursor-pointer">
+                    Login
+                  </Button>
+                </Link>
+              )}
               <div className="hidden md:flex items-center gap-2">
                 {loading ? (
                   <div className="animate-pulse">

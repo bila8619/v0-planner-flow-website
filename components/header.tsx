@@ -11,20 +11,34 @@ import { usePathname } from "next/navigation"
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   const { user, loading } = useAuth()
   const pathname = usePathname()
   const isHomepage = pathname === "/"
 
   const handleLogout = async () => {
+    if (signingOut) return
+    setSigningOut(true)
     const supabase = createClient()
     try {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: "local" } as any).catch(() => {})
+      await supabase.auth.signOut().catch(() => {})
+
+      await fetch("/api/auth/signout", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+      }).catch(() => {})
+
       setIsMobileMenuOpen(false)
+
       if (typeof window !== "undefined") {
-        window.location.assign("/")
+        window.location.replace("/")
       }
     } catch (error) {
       console.error("Error during logout:", error)
+    } finally {
+      setSigningOut(false)
     }
   }
 
@@ -88,13 +102,6 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-4">
-              {!loading && !user && (
-                <Link href="/auth/login" className="md:hidden">
-                  <Button variant="ghost" size="sm" className="cursor-pointer">
-                    Login
-                  </Button>
-                </Link>
-              )}
               <div className="hidden md:flex items-center gap-2">
                 {loading ? (
                   <div className="animate-pulse">
@@ -113,6 +120,8 @@ export function Header() {
                       size="sm"
                       onClick={handleLogout}
                       className="flex items-center gap-2 bg-transparent"
+                      disabled={signingOut}
+                      aria-busy={signingOut}
                     >
                       <LogOut className="h-4 w-4" />
                       Sign Out
@@ -209,6 +218,8 @@ export function Header() {
                         variant="outline"
                         className="w-full flex items-center gap-2 bg-transparent"
                         onClick={handleLogout}
+                        disabled={signingOut}
+                        aria-busy={signingOut}
                       >
                         <LogOut className="h-4 w-4" />
                         Sign Out

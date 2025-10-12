@@ -34,13 +34,26 @@ export function HeroSection() {
                   Start Planning Today
                 </Button>
               </Link>
-              <Link href="/templates">
+
+              {/* Desktop/Tablet (>= sm): Explore Templates */}
+              <Link href="/templates" className="hidden sm:block">
                 <Button
                   size="lg"
                   variant="outline"
                   className="border-border hover:bg-muted hover:text-foreground bg-transparent cursor-pointer"
                 >
                   Explore Templates
+                </Button>
+              </Link>
+
+              {/* Mobile (< sm): Sign In */}
+              <Link href="/auth/login" className="sm:hidden">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-border hover:bg-muted hover:text-foreground bg-transparent cursor-pointer"
+                >
+                  Sign In
                 </Button>
               </Link>
             </div>

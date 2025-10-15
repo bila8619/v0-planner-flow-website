@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Download } from "lucide-react"
+import { Download, RotateCcw } from "lucide-react"
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 import { useState, useEffect, useMemo, useCallback, memo } from "react"
@@ -16,6 +16,17 @@ import { ExportDialog } from "@/components/export-dialog"
 import { useAuth } from "@/components/auth-provider"
 import { dropdownData, templateConfigs } from "@/lib/template-data"
 import Image from "next/image"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface Task {
   id: string
@@ -45,6 +56,7 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
   const [notes, setNotes] = useState("")
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [showSaveAnimation, setShowSaveAnimation] = useState(false)
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
 
   const { user, userProfile } = useAuth()
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
@@ -221,6 +233,36 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
     [addTask],
   )
 
+  // Helper: compute default tasks for this template
+  const getDefaultTasks = useCallback((): Task[] => {
+    if (!templateConfig) return []
+    const defaults: Task[] = []
+    templateConfig.sections.forEach((section, sectionIndex) => {
+      section.tasks.forEach((taskText, taskIndex) => {
+        defaults.push({
+          id: `${sectionIndex}-${taskIndex}-${Date.now()}`,
+          text: taskText,
+          completed: false,
+          priority: "Medium",
+          category: section.title,
+          timeframe: "This Week",
+        })
+      })
+    })
+    return defaults
+  }, [templateConfig])
+
+  // Action: restore to defaults (autosave effect will persist)
+  const handleRestoreDefaults = useCallback(() => {
+    const defaults = getDefaultTasks()
+    // clear local backup first so we write a fresh copy
+    try {
+      localStorage.removeItem(`template-${templateId}`)
+    } catch {}
+    setTasks(defaults)
+    setConfirmResetOpen(false)
+  }, [getDefaultTasks, templateId, setTasks])
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header with PlannerFlow logo */}
@@ -257,6 +299,36 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
                   </Button>
                 </ExportDialog>
               )}
+
+              <AlertDialog open={confirmResetOpen} onOpenChange={setConfirmResetOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="hidden sm:flex cursor-pointer bg-transparent"
+                    title="Restore default tasks"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Restore Defaults
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Restore default tasks?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will replace your current task list with the template&apos;s original default tasks. Your
+                      notes will remain unchanged.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRestoreDefaults} className="bg-primary text-primary-foreground">
+                      Restore
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               <Button
                 variant="outline"
                 size="lg"
@@ -268,23 +340,47 @@ export const InteractiveTemplate = memo(function InteractiveTemplate({
               </Button>
             </div>
           </div>
+
           <div className="sm:hidden mt-3 pt-3 border-t border-border">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-semibold text-foreground">{templateName}</h1>
                 <p className="text-sm text-muted-foreground">{templateDescription}</p>
               </div>
-              {userProfile && (
-                <ExportDialog
-                  templateName={templateName}
-                  templateData={{ tasks, notes }}
-                  userPlan={userProfile.subscription_plan}
-                >
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </ExportDialog>
-              )}
+              <div className="flex items-center gap-2">
+                {userProfile && (
+                  <ExportDialog
+                    templateName={templateName}
+                    templateData={{ tasks, notes }}
+                    userPlan={userProfile.subscription_plan}
+                  >
+                    <Button variant="outline" size="sm" title="Export">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </ExportDialog>
+                )}
+                <AlertDialog open={confirmResetOpen} onOpenChange={setConfirmResetOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" title="Restore default tasks">
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Restore default tasks?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This replaces your current tasks with the template defaults. Notes are kept.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleRestoreDefaults} className="bg-primary text-primary-foreground">
+                        Restore
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           </div>
         </div>

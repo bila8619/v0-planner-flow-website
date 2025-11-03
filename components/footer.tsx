@@ -19,8 +19,8 @@ export function Footer() {
               Create. Focus. Repeat. Transform your productivity with digital planning tools designed for modern life.
             </p>
             <div className="text-sm text-background/60">
-              <p>442 5th Ave. Ste. 1913</p>
-              <p>New York, NY 10018</p>
+              <p>800 Third Avenue FRNT A #1782</p>
+              <p>New York, NY 10022</p>
               <p>support@plannerflow.shop</p>
             </div>
           </div>

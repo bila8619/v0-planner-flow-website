@@ -109,7 +109,7 @@ export default function PrivacyPolicyPage() {
                     <strong>Email:</strong> support@plannerflow.shop
                   </p>
                   <p>
-                    <strong>Address:</strong> 442 5th Ave. Ste. 1913, New York, NY 10018
+                    <strong>Address:</strong> 800 Third Avenue FRNT A #1782, New York, NY 10022
                   </p>
                 </div>
               </CardContent>

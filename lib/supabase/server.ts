@@ -7,7 +7,7 @@ import { cookies } from "next/headers"
  * Use this for admin operations like verifyOtp, updateUser, etc.
  */
 export function createServiceClient() {
-  return createSupabaseClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

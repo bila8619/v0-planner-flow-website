@@ -33,7 +33,6 @@ export default function UpdatePasswordPage() {
       }
     })
 
-    // Enable button after 2 seconds regardless — updateUser will catch real errors
     const timer = setTimeout(() => setSessionReady(true), 2000)
 
     return () => {
@@ -69,15 +68,20 @@ export default function UpdatePasswordPage() {
     }
 
     try {
-      const supabase = createClient()
+      const res = await fetch("/api/auth/update-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password: newPassword,
+        }),
+      })
 
-// Force session refresh before updating
-await supabase.auth.getSession()
+      const result = await res.json()
 
-const { error } = await supabase.auth.updateUser({ password: newPassword })
-
-      if (error) {
-        setError(error.message)
+      if (result.error) {
+        setError(result.error)
       } else {
         setIsSuccess(true)
       }

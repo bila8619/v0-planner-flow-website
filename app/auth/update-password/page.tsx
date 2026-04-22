@@ -11,6 +11,7 @@ import { Footer } from "@/components/footer"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Eye, EyeOff, CheckCircle } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
@@ -18,26 +19,22 @@ export default function UpdatePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [refreshToken, setRefreshToken] = useState<string | null>(null)
+  const [sessionReady, setSessionReady] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash
-      const params = new URLSearchParams(hash.substring(1))
-      const token = params.get("access_token")
-      const rToken = params.get("refresh_token")
+    const supabase = createClient()
 
-      if (token && rToken) {
-        setAccessToken(token)
-        setRefreshToken(rToken)
+    // Check if session already exists (set by /auth/confirm via exchangeCodeForSession)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSessionReady(true)
       } else {
-        setError("Missing tokens in URL. Please use the reset link from your email.")
+        setError("Session expired or missing. Please request a new reset link.")
       }
-    }
+    })
   }, [])
 
   useEffect(() => {
@@ -54,7 +51,6 @@ export default function UpdatePasswordPage() {
     setIsSubmitting(true)
     setError(null)
 
-    // Validation
     if (newPassword.length < 6) {
       setError("Password must be at least 6 characters long")
       setIsSubmitting(false)
@@ -68,27 +64,16 @@ export default function UpdatePasswordPage() {
     }
 
     try {
-      const res = await fetch("/api/auth/update-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          password: newPassword,
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        }),
-      })
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
 
-      const result = await res.json()
-
-      if (result.error) {
-        setError(result.error)
+      if (error) {
+        setError(error.message)
       } else {
         setIsSuccess(true)
       }
-    } catch (error) {
-      console.error("Error updating password:", error)
+    } catch (err) {
+      console.error("Error updating password:", err)
       setError("An unexpected error occurred.")
     } finally {
       setIsSubmitting(false)
@@ -198,7 +183,7 @@ export default function UpdatePasswordPage() {
                 <Button
                   type="submit"
                   className="w-full h-11 bg-primary hover:bg-primary/90"
-                  disabled={isSubmitting || !accessToken || !refreshToken}
+                  disabled={isSubmitting || !sessionReady}
                 >
                   {isSubmitting ? "Updating Password..." : "Update Password"}
                 </Button>

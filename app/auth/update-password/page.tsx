@@ -27,24 +27,19 @@ export default function UpdatePasswordPage() {
   useEffect(() => {
     const supabase = createClient()
 
-    // Check if session already exists (set by /auth/confirm via exchangeCodeForSession)
-   supabase.auth.getUser().then(({ data: { user }, error }) => {
-  if (user && !error) {
-    setSessionReady(true)
-  } else {
-    // Also try onAuthStateChange as fallback
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (session && session.user)) {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || session?.user) {
         setSessionReady(true)
-        subscription.unsubscribe()
       }
     })
-    // Set a timeout to show error if nothing comes through
-    setTimeout(() => {
-      setError("Session expired or missing. Please request a new reset link.")
-    }, 5000)
-  }
-})
+
+    // Enable button after 2 seconds regardless — updateUser will catch real errors
+    const timer = setTimeout(() => setSessionReady(true), 2000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timer)
+    }
   }, [])
 
   useEffect(() => {

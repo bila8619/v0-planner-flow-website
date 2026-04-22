@@ -53,7 +53,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/login`,
+          emailRedirectTo: `https://plannerflow.shop/auth/confirm?next=/dashboard`,
         },
       })
       if (error) throw error

@@ -25,8 +25,7 @@ export default function ForgotPasswordPage() {
     setError(null)
 
     try {
-      const redirectTo =
-        process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/reset-password`
+      const redirectTo = `https://plannerflow.shop/auth/confirm?next=/auth/update-password`
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo,

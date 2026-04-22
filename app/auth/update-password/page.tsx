@@ -70,7 +70,11 @@ export default function UpdatePasswordPage() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
+
+// Force session refresh before updating
+await supabase.auth.getSession()
+
+const { error } = await supabase.auth.updateUser({ password: newPassword })
 
       if (error) {
         setError(error.message)

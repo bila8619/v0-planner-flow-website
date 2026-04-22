@@ -1,35 +1,17 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: Request) {
   try {
-    const { password, access_token, refresh_token } = await request.json()
+    const { password } = await request.json()
 
     if (!password || password.trim().length < 6) {
       return NextResponse.json({ error: "Password must be at least 6 characters long." }, { status: 400 })
     }
 
-    if (!access_token || !refresh_token) {
-      return NextResponse.json({ error: "Missing access or refresh token." }, { status: 401 })
-    }
+    const supabase = await createClient()
 
-    const supabase = createClient()
-
-    // Establish a session using the tokens provided in the URL
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token,
-      refresh_token,
-    })
-
-    if (sessionError) {
-      console.error("[API] setSession error:", sessionError)
-      return NextResponse.json({ error: sessionError.message }, { status: 401 })
-    }
-
-    // Now perform the update using the (now-valid) access token
-    const { error } = await supabase.auth.updateUser({
-      password,
-    })
+    const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
       console.error("[API] updateUser error:", error)

@@ -5,11 +5,6 @@ import { createServerClient } from "@/lib/supabase/server"
 export const runtime = "nodejs"
 
 export async function GET() {
-  console.log("[v0] GET request to Stripe checkout API")
-  console.log("[v0] Environment check - NODE_ENV:", process.env.NODE_ENV)
-  console.log("[v0] Environment check - VERCEL:", process.env.VERCEL)
-  console.log("[v0] Stripe configured:", isStripeConfigured())
-
   return NextResponse.json({
     message: "Stripe checkout API is available",
     stripeConfigured: isStripeConfigured(),
@@ -26,7 +21,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Check if Stripe is configured
     if (!isStripeConfigured() || !stripe) {
       return NextResponse.json({ error: "Payment system is not configured. Please contact support." }, { status: 503 })
     }
@@ -48,9 +42,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    const { data: profile } = await supabase.from("profiles").select("stripe_customer_id").eq("id", user.id).single()
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("stripe_customer_id")
+      .eq("id", user.id)
+      .single()
 
     let customerId = profile?.stripe_customer_id
+
+    // Verify the customer still exists in Stripe
+    if (customerId) {
+      try {
+        await stripe.customers.retrieve(customerId)
+      } catch {
+        // Customer doesn't exist in Stripe, clear it
+        customerId = null
+      }
+    }
 
     if (!customerId) {
       // Create new Stripe customer
@@ -61,9 +69,11 @@ export async function POST(request: NextRequest) {
         },
       })
       customerId = customer.id
-
-      // Update profile with Stripe customer ID
-      await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id)
+      // Update profile with new Stripe customer ID
+      await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", user.id)
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://plannerflow.shop"

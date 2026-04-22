@@ -20,6 +20,7 @@ export default function UpdatePasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -30,6 +31,9 @@ export default function UpdatePasswordPage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || session?.user) {
         setSessionReady(true)
+        if (session?.user?.id) {
+          setUserId(session.user.id)
+        }
       }
     })
 
@@ -67,6 +71,12 @@ export default function UpdatePasswordPage() {
       return
     }
 
+    if (!userId) {
+      setError("Session expired. Please request a new reset link.")
+      setIsSubmitting(false)
+      return
+    }
+
     try {
       const res = await fetch("/api/auth/update-password", {
         method: "POST",
@@ -75,6 +85,7 @@ export default function UpdatePasswordPage() {
         },
         body: JSON.stringify({
           password: newPassword,
+          user_id: userId,
         }),
       })
 

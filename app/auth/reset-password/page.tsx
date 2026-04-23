@@ -11,6 +11,7 @@ import { Footer } from "@/components/footer"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Eye, EyeOff, CheckCircle } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -44,7 +45,9 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (isSuccess) {
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
+        const supabase = createClient()
+        await supabase.auth.signOut().catch(() => {})
         router.push("/auth/login")
       }, 2000)
       return () => {

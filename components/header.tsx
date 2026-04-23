@@ -20,25 +20,26 @@ export function Header() {
     if (signingOut) return
     setSigningOut(true)
     const supabase = createClient()
+
+    const redirect = () => {
+      setIsMobileMenuOpen(false)
+      window.location.replace("/")
+    }
+
+    const timeout = setTimeout(redirect, 2000)
+
     try {
       await supabase.auth.signOut({ scope: "local" } as any).catch(() => {})
-      await supabase.auth.signOut().catch(() => {})
-
       await fetch("/api/auth/signout", {
         method: "POST",
         cache: "no-store",
         headers: { "content-type": "application/json" },
       }).catch(() => {})
-
-      setIsMobileMenuOpen(false)
-
-      if (typeof window !== "undefined") {
-        window.location.replace("/")
-      }
     } catch (error) {
       console.error("Error during logout:", error)
     } finally {
-      setSigningOut(false)
+      clearTimeout(timeout)
+      redirect()
     }
   }
 
